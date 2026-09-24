@@ -1,0 +1,14 @@
+{
+  "name": "TinyCoup",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm install",
+  "postAttachCommand": "npm run dev -- --host",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": { "label": "TinyCoup site", "onAutoForward": "openBrowser" }
+  },
+  "customizations": {
+    "vscode": { "extensions": ["svelte.svelte-vscode"] },
+    "codespaces": { "openFiles": ["README.md"] }
+  }
+}
