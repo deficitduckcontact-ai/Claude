@@ -2,11 +2,13 @@
   import { goto } from '$app/navigation';
   import ArtistPicker from '$lib/components/ArtistPicker.svelte';
   import { session } from '$lib/session.svelte';
-  import { startCheckout } from '$lib/api';
+  import { joinWaitlist, startCheckout } from '$lib/api';
+  import { on } from '$lib/features';
 
   let initial = $state<string[] | null>(null);
   let busy = $state(false);
   let error = $state('');
+  let waitlisted = $state(false);
 
   // Wait for the session (follows) before seeding the picker.
   $effect(() => {
@@ -27,6 +29,12 @@
       return goto('/signup?next=/subscribe');
     }
     busy = true;
+    if (!on('payments')) {
+      // Preview site: no charge, just remember they're interested.
+      try { await joinWaitlist(session.account.email, false); waitlisted = true; } catch (e) { error = (e as Error).message; }
+      busy = false;
+      return;
+    }
     try {
       const url = await startCheckout(picks);
       sessionStorage.removeItem('tc:pendingPicks');
@@ -39,6 +47,11 @@
 <svelte:head><title>Pick your artists — TinyCoup</title></svelte:head>
 
 <div class="wrap">
+  {#if waitlisted}
+    <div class="card pad soon"><b>You're on the list.</b> Subscriptions open at launch. We'll email {session.account?.email} the moment you can back these artists. No charge until then.</div>
+  {:else if !on('payments')}
+    <div class="card pad soon"><b>Preview:</b> subscriptions open at launch. Pick the artists you'd back and we'll let you know when it's live. Nothing is charged.</div>
+  {/if}
   {#if initial}
     <ArtistPicker {initial} mode="new" {busy} {error} onconfirm={confirm} oncancel={() => history.length > 1 ? history.back() : goto('/')} />
   {/if}
@@ -48,6 +61,7 @@
 
 <style>
   .wrap { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
+  .soon { margin-bottom: 12px; background: var(--brand-tint); border-color: var(--line); font-size: 14px; }
   .fine { font-size: 12px; text-align: center; margin-top: 12px; }
   @media (max-width: 899px) { .wrap { margin: 0; padding: 0 0 calc(var(--bottom-nav) + 20px); } }
 </style>

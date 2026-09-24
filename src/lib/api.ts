@@ -1,9 +1,10 @@
 // Write side: everything that needs privilege goes through Cloud Functions.
 // Each function has a DEMO fallback so the flows are clickable today.
-import { LIVE, call, fb } from './firebase';
+import { mode, call, fb } from './firebase.svelte';
 import { saveLocal, allSeries } from './data';
 import { session } from './session.svelte';
 import { SEED_NOW } from './seed';
+import { on } from './features';
 import { checkComment, rateLimit, type RateState } from '../../functions/src/spam';
 import type { Comment, Episode, PanelSrc, Series } from './types';
 
@@ -14,7 +15,7 @@ const demoWait = (ms = 600) => new Promise((r) => setTimeout(r, ms));
 /** New subscriber → Stripe Checkout. Returns a URL to navigate to. */
 export async function startCheckout(picks: string[], interval: 'month' | 'year' = 'month'): Promise<string> {
   if (!picks.length) throw new Error('Pick at least one artist');
-  if (LIVE) return (await call<{ url: string }>('createCheckout', { picks, interval, origin: location.origin })).url;
+  if (mode.live) return (await call<{ url: string }>('createCheckout', { picks, interval, origin: location.origin })).url;
   await demoWait();
   session.setSub({ status: 'active', picks, since: Date.now(), currentPeriodEnd: Date.now() + 30 * 864e5 });
   return '/subscribe/success';
@@ -23,14 +24,14 @@ export async function startCheckout(picks: string[], interval: 'month' | 'year' 
 /** Existing subscriber changes who they back (quantity change, prorated). */
 export async function updatePicks(picks: string[]) {
   if (!picks.length) throw new Error('Keep at least one artist, or cancel from Billing');
-  if (LIVE) return void (await call('updatePicks', { picks }));
+  if (mode.live) return void (await call('updatePicks', { picks }));
   await demoWait(400);
   session.setSub({ ...session.sub, status: 'active', picks });
 }
 
 /** Stripe Customer Portal: card, invoices, cancel. */
 export async function openBillingPortal(): Promise<string> {
-  if (LIVE) return (await call<{ url: string }>('billingPortal', { origin: location.origin })).url;
+  if (mode.live) return (await call<{ url: string }>('billingPortal', { origin: location.origin })).url;
   await demoWait(300);
   return '/me/billing';
 }
@@ -43,7 +44,7 @@ export async function cancelDemo() {
 
 /** Becomes a creator + returns the Stripe Connect Express onboarding URL. */
 export async function creatorOnboard(): Promise<string> {
-  if (LIVE) return (await call<{ url: string }>('creatorOnboard', { origin: location.origin })).url;
+  if (mode.live) return (await call<{ url: string }>('creatorOnboard', { origin: location.origin })).url;
   await demoWait();
   session.setCreator(true);
   return '/studio?onboarded=1';
@@ -53,7 +54,7 @@ export async function createSeries(input: { title: string; tagline: string; abou
   const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
   if (!slug) throw new Error('Give your series a title');
   if (allSeries().some((s) => s.slug === slug)) throw new Error('That series name is taken');
-  if (LIVE) return (await call<{ slug: string }>('createSeries', input)).slug;
+  if (mode.live) return (await call<{ slug: string }>('createSeries', input)).slug;
   const s: Series = { slug, ...input, creatorUids: [session.account!.uid], hue: Math.floor(Math.random() * 360), followers: 0, schedule: 'Whenever' };
   saveLocal('tc:series', s);
   return slug;
@@ -76,7 +77,7 @@ export interface Draft {
 export async function publishEpisode(d: Draft, progress: (p: number) => void): Promise<{ slug: string; id: string }> {
   if (!d.files.length) throw new Error('Add at least one panel');
   if (d.files.length > 20) throw new Error('20 panels max per episode');
-  if (LIVE) {
+  if (mode.live) {
     const { storage } = await fb();
     const s = await import('firebase/storage');
     const draftId = crypto.randomUUID();
@@ -120,7 +121,7 @@ async function shrink(file: File, size: number): Promise<string> {
 
 /** Signed, short-lived URLs for premium panels (subscribers only). */
 export async function premiumPanels(slug: string, id: string): Promise<PanelSrc[] | null> {
-  if (!LIVE) return null; // demo: seed art is already present, the paywall is purely visual
+  if (!mode.live) return null; // demo: seed art is already present, the paywall is purely visual
   const r = await call<{ panels: { src: string; w: number; h: number }[] }>('premiumPanels', { slug, id });
   return r.panels.map((p) => ({ kind: 'url', ...p }));
 }
@@ -129,7 +130,7 @@ export async function premiumPanels(slug: string, id: string): Promise<PanelSrc[
 const CKEY = (slug: string, id: string) => `tc:comments:${slug}:${id}`;
 
 export async function listComments(slug: string, id: string): Promise<Comment[]> {
-  if (LIVE) {
+  if (mode.live) {
     const { db } = await fb();
     const f = await import('firebase/firestore');
     // Held (spam-filtered / reported) comments are only visible to their author, the creator and mods.
@@ -140,7 +141,8 @@ export async function listComments(slug: string, id: string): Promise<Comment[]>
 }
 
 /** Who may comment: verified email + (active subscriber or creator). Mirrors functions/src/community.ts. */
-export function commentGate(): { ok: true } | { ok: false; reason: 'login' | 'verify' | 'support' } {
+export function commentGate(): { ok: true } | { ok: false; reason: 'soon' | 'login' | 'verify' | 'support' } {
+  if (!on('comments')) return { ok: false, reason: 'soon' };
   if (!session.account) return { ok: false, reason: 'login' };
   if (!session.account.emailVerified) return { ok: false, reason: 'verify' };
   if (!session.subscribed && !session.isCreator) return { ok: false, reason: 'support' };
@@ -152,7 +154,7 @@ export async function postComment(slug: string, id: string, body: string, parent
   if (!a) throw new Error('Sign in to comment');
   body = body.trim();
   if (!body) throw new Error('Say something first');
-  if (LIVE) {
+  if (mode.live) {
     const r = await call<{ id: string; status: 'visible' | 'held' }>('postComment', { slug, id, body, parentId: parentId ?? null });
     return { id: r.id, uid: a.uid, handle: a.handle, body, parentId, status: r.status, createdAt: Date.now() };
   }
@@ -175,21 +177,21 @@ export const REPORT_REASONS = { spam: 'Spam', harassment: 'Harassment or bullyin
 
 export async function reportComment(slug: string, id: string, commentId: string, reason: keyof typeof REPORT_REASONS) {
   if (!session.account) throw new Error('Log in to report');
-  if (LIVE) return void (await call('report', { path: `series/${slug}/episodes/${id}/comments/${commentId}`, reason }));
+  if (mode.live) return void (await call('report', { path: `series/${slug}/episodes/${id}/comments/${commentId}`, reason }));
   await demoWait(200);
 }
 
 /** Right to erasure. Live: deleteAccount callable. Demo: forget local data. */
 export async function deleteAccount(confirm: string) {
   if (confirm !== 'DELETE') throw new Error('Type DELETE to confirm');
-  if (LIVE) await call('deleteAccount', { confirm });
+  if (mode.live) await call('deleteAccount', { confirm });
   else session.forgetDemoAccount();
   await session.signOut();
 }
 
 export async function joinWaitlist(email: string, creator: boolean) {
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('That email looks off');
-  if (LIVE) {
+  if (mode.live) {
     const { db } = await fb();
     const f = await import('firebase/firestore');
     await f.addDoc(f.collection(db, 'waitlist'), { email, creator, createdAt: f.serverTimestamp() });

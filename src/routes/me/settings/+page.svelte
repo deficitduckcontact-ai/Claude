@@ -4,6 +4,7 @@
   import { session } from '$lib/session.svelte';
   import { theme, type Theme } from '$lib/theme.svelte';
   import { deleteAccount } from '$lib/api';
+  import { on } from '$lib/features';
 
   let verifyMsg = $state('');
   let confirm = $state('');
@@ -60,11 +61,15 @@
     <div class="card pad sec danger">
       <h3>Delete account</h3>
       <p class="small">This cancels your subscription, deletes your profile, follows, likes and history, and replaces your comments with “[deleted]”. Payment records are kept for 7 years because tax law requires it. This can't be undone.</p>
+      {#if !on('selfDelete')}
+        <p class="small">During the preview, email <b>[support email]</b> from this address and we'll delete it within 7 days.</p>
+      {:else}
       <div class="row">
         <input class="input" placeholder="Type DELETE" bind:value={confirm} aria-label="Type DELETE to confirm" />
         <button class="btn danger-btn" disabled={confirm !== 'DELETE' || deleting} onclick={del}>{deleting ? 'Deleting…' : 'Delete my account'}</button>
       </div>
       {#if delErr}<p class="error">{delErr}</p>{/if}
+      {/if}
       <p class="faint small">Want a copy of your data first? <a href="mailto:privacy@tinycoup.example?subject=Data%20export" class="lnk">Ask us</a> — TODO: self-serve export.</p>
     </div>
   </div>

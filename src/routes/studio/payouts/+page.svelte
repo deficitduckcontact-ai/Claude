@@ -1,6 +1,6 @@
 <script lang="ts">
   import RequireAuth from '$lib/components/RequireAuth.svelte';
-  import { LIVE } from '$lib/firebase';
+  import { mode } from '$lib/firebase.svelte';
   import { money, split, PER_ARTIST_CENTS } from '$lib/pricing';
 
   // Worked example so creators can see exactly how a reader's payment splits.
@@ -29,7 +29,7 @@
     </div>
     <div class="card pad" style="margin-top:14px">
       <h3>Statements</h3>
-      {#if LIVE}
+      {#if mode.live}
         <div class="todo-box"><b>TODO:</b> list <code>ledger</code> rows where creatorUid == you (rules already allow it), monthly totals, CSV export, and a “Stripe dashboard” login link (accounts.createLoginLink).</div>
       {:else}
         <p class="muted">No payouts in demo mode.</p>

@@ -1,7 +1,7 @@
 // Read side. Seed data is always available (and is what gets prerendered);
 // demo-mode uploads live in localStorage; live mode merges Firestore.
 import { CREATORS, EPISODES, SERIES } from './seed';
-import { LIVE, fb } from './firebase';
+import { mode, fb, resolveMode } from './firebase.svelte';
 import { session } from './session.svelte';
 import type { Creator, Episode, Series, SortMode } from './types';
 
@@ -51,7 +51,8 @@ export function sortFeed(eps: Episode[], mode: SortMode, now: number, follows: s
 
 /** Live mode: newest published episodes from Firestore, merged over seed. */
 export async function liveEpisodes(max = 60): Promise<Episode[]> {
-  if (!LIVE) return [];
+  await resolveMode();
+  if (!mode.live) return [];
   const { db } = await fb();
   const f = await import('firebase/firestore');
   const q = f.query(f.collectionGroup(db, 'episodes'), f.where('status', '==', 'published'), f.orderBy('publishedAt', 'desc'), f.limit(max));
@@ -76,7 +77,8 @@ export async function liveEpisodes(max = 60): Promise<Episode[]> {
 
 /** Live mode: one episode not present at build time (published since the last deploy). */
 export async function liveEpisode(slug: string, id: string): Promise<Episode | null> {
-  if (!LIVE) return null;
+  await resolveMode();
+  if (!mode.live) return null;
   const { db } = await fb();
   const f = await import('firebase/firestore');
   const d = await f.getDoc(f.doc(db, 'series', slug, 'episodes', id));

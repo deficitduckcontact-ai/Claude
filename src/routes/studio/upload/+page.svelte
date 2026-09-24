@@ -5,7 +5,7 @@
   import { session } from '$lib/session.svelte';
   import { allSeries } from '$lib/data';
   import { publishEpisode } from '$lib/api';
-  import { LIVE } from '$lib/firebase';
+  import { mode } from '$lib/firebase.svelte';
 
   interface Item { file: File; url: string; w: number; h: number }
   let slug = $state('');
@@ -91,7 +91,7 @@
           <div class="row">
             <button class="btn primary big" onclick={publish} disabled={progress >= 0 || !items.length}>
               {progress >= 0 ? `Publishing… ${Math.round(progress * 100)}%` : `Publish ${items.length} panel${items.length === 1 ? '' : 's'}`}</button>
-            {#if !LIVE}<span class="faint small">Demo: images are shrunk and kept in this browser.</span>{/if}
+            {#if !mode.live}<span class="faint small">Demo: images are shrunk and kept in this browser.</span>{/if}
           </div>
         </div>
 

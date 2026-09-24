@@ -9,13 +9,17 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "emulators": "firebase emulators:start",
-    "deploy": "node scripts/check-live.mjs && npm run build && npm --prefix functions run build && firebase deploy"
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-tinycoup",
+    "deploy": "npm run build && firebase deploy --only hosting,firestore",
+    "login": "firebase login",
+    "use": "firebase use",
+    "deploy:backend": "npm --prefix functions install && npm --prefix functions run build && firebase deploy --only functions,storage"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "firebase-tools": "^14.27.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "^5.5.0",

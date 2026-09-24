@@ -2,7 +2,7 @@
   import RequireAuth from '$lib/components/RequireAuth.svelte';
   import { session } from '$lib/session.svelte';
   import { cancelDemo, openBillingPortal } from '$lib/api';
-  import { LIVE } from '$lib/firebase';
+  import { mode } from '$lib/firebase.svelte';
   import { money, quote } from '$lib/pricing';
   import { longDate } from '$lib/time';
 
@@ -37,7 +37,7 @@
         <div class="row" style="flex-wrap:wrap">
           <button class="btn primary" onclick={portal} disabled={busy}>Update card & invoices</button>
           <a class="btn" href="/me/plan">Change artists</a>
-          {#if !LIVE}<button class="btn ghost" onclick={cancelDemo}>Cancel (demo)</button>{/if}
+          {#if !mode.live}<button class="btn ghost" onclick={cancelDemo}>Cancel (demo)</button>{/if}
         </div>
         {#if err}<p class="error">{err}</p>{/if}
       {:else if session.sub.status === 'canceled'}
@@ -48,7 +48,7 @@
         <a class="btn primary" href="/subscribe">Pick artists</a>
       {/if}
     </div>
-    {#if !LIVE}
+    {#if !mode.live}
       <div class="todo-box" style="margin-top:14px"><b>Demo mode:</b> in live mode, “Update card & invoices” opens the Stripe Customer Portal (update card, download invoices, cancel). Cancelling there fires a webhook that flips your subscription doc.</div>
     {/if}
   </div>

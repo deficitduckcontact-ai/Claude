@@ -4,8 +4,9 @@
   import Logo from './Logo.svelte';
   import { session } from '$lib/session.svelte';
   import { avatarArt } from '$lib/art';
-  import { LIVE } from '$lib/firebase';
+  import { mode } from '$lib/firebase.svelte';
   import { theme } from '$lib/theme.svelte';
+  import { LIVE_FEATURES } from '$lib/features';
 
   let q = $state('');
   let menu = $state(false);
@@ -25,7 +26,8 @@
     <div class="grow mob-only"></div>
 
     <div class="right">
-      {#if !LIVE}<span class="chip todo desk-only" title="No Firebase config — accounts, uploads and payments are simulated in this browser">DEMO</span>{/if}
+      {#if mode.resolved && !mode.live}<span class="chip todo desk-only" title="Demo mode — accounts, uploads and payments are simulated in this browser only">DEMO</span>
+      {:else if mode.live && !LIVE_FEATURES.payments}<span class="chip brand desk-only" title="Real accounts. Subscriptions, comments and creator tools open at launch.">PREVIEW</span>{/if}
       {#if session.account}
         {#if session.isCreator}
           <a class="btn ghost create desk-only" href="/studio/upload" title="Post a comic">

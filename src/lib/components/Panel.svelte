@@ -1,13 +1,13 @@
 <script lang="ts">
   import { panelArt } from '$lib/art';
-  import { IMAGE_BASE } from '$lib/firebase';
+  import { imageBase } from '$lib/firebase.svelte';
   import type { PanelSrc } from '$lib/types';
 
   let { panel, hue = 200, eager = false, sizes = '(max-width: 899px) 100vw, 680px' }:
     { panel: PanelSrc; hue?: number; eager?: boolean; sizes?: string } = $props();
 
   // Derivatives written by functions/src/images.ts:  {base}-{800|1600}.{avif|webp}, {base}-400.webp
-  const url = (base: string) => (base.startsWith('http') || base.startsWith('data:') ? base : `${IMAGE_BASE}/${base}`);
+  const url = (base: string) => (base.startsWith('http') || base.startsWith('data:') ? base : `${imageBase()}/${base}`);
   const set = (base: string, ext: string) => `${url(base)}-800.${ext} 800w, ${url(base)}-1600.${ext} 1600w`;
 </script>
 

@@ -4,13 +4,16 @@
   import Cover from '$lib/components/Cover.svelte';
   import { session } from '$lib/session.svelte';
   import { allSeries, episodesOf } from '$lib/data';
-  import { creatorOnboard } from '$lib/api';
-  import { LIVE } from '$lib/firebase';
+  import { creatorOnboard, joinWaitlist } from '$lib/api';
+  import { on } from '$lib/features';
+  import { mode } from '$lib/firebase.svelte';
   import { money, PER_ARTIST_CENTS, CREATOR_SHARE } from '$lib/pricing';
   import { ago, compact } from '$lib/time';
 
   let busy = $state(false);
   let err = $state('');
+  let listed = $state(false);
+  async function creatorList() { try { await joinWaitlist(session.account!.email, true); listed = true; } catch (e) { err = (e as Error).message; } }
   const mine = $derived(allSeries().filter((s) => session.account && s.creatorUids.includes(session.account.uid)));
   const eps = $derived(mine.flatMap((s) => episodesOf(s.slug)));
 
@@ -35,9 +38,16 @@
           <li><b>You own your work.</b> Non-exclusive; post it anywhere else too.</li>
           <li><b>Upload at full size.</b> We make the 1600px retina and 800px versions and serve them fast.</li>
         </ul>
-        <button class="btn primary big" onclick={onboard} disabled={busy}>{busy ? 'Opening Stripe…' : 'Set up payouts & start'}</button>
+        {#if on('creators')}
+          <button class="btn primary big" onclick={onboard} disabled={busy}>{busy ? 'Opening Stripe…' : 'Set up payouts & start'}</button>
+        {:else if listed}
+          <p><b>You're on the creator list.</b> We'll email {session.account?.email} when publishing opens.</p>
+        {:else}
+          <p class="muted">Publishing opens at launch.</p>
+          <button class="btn primary big" onclick={creatorList}>Put me on the creator list</button>
+        {/if}
         {#if err}<p class="error">{err}</p>{/if}
-        {#if !LIVE}<div class="todo-box" style="margin-top:14px"><b>Demo mode:</b> this skips Stripe Connect onboarding and flips your account to creator in this browser.</div>{/if}
+        {#if !mode.live}<div class="todo-box" style="margin-top:14px"><b>Demo mode:</b> this skips Stripe Connect onboarding and flips your account to creator in this browser.</div>{/if}
       </div>
     {:else}
       <div class="row top"><h1 class="grow">Creator studio</h1>

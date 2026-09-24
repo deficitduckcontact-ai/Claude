@@ -1,4 +1,8 @@
+# PREVIEW: keep search engines out while the site shows placeholder comics.
+# LAUNCH CHECKLIST: replace this file with
+#   User-agent: *
+#   Allow: /
+#   Disallow: /me
+#   Disallow: /studio
 User-agent: *
-Allow: /
-Disallow: /me
-Disallow: /studio
+Disallow: /

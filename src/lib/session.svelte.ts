@@ -2,7 +2,7 @@
 // DEMO mode: everything persists to localStorage so the full flow works
 // without a backend. LIVE mode: Firebase Auth + Firestore (rules enforce
 // that subscription state is only ever written by Cloud Functions).
-import { LIVE, fb } from './firebase';
+import { mode, fb, resolveMode } from './firebase.svelte';
 import { SEED_NOW } from './seed';
 import { isDisposableEmail } from '../../functions/src/spam';
 import type { Account, Creator, Density, Series, SortMode, Subscription } from './types';
@@ -46,8 +46,12 @@ class Session {
   get subscribed() { return this.sub.status === 'active' || this.sub.status === 'past_due'; }
   get isCreator() { return !!this.account?.isCreator; }
 
-  init() {
-    if (!browser || this.ready) return;
+  #started = false;
+
+  async init() {
+    if (!browser || this.#started) return;
+    this.#started = true;
+    await resolveMode(); // demo vs live is decided at runtime (see firebase.svelte.ts)
     this.now = Date.now();
     setInterval(() => (this.now = Date.now()), 60_000);
     try {
@@ -55,7 +59,7 @@ class Session {
       // Big cards by default (new reddit / Tinyview); Compact and Classic are opt-in lists.
       this.density = p.density ?? 'card';
       this.sort = p.sort ?? 'hot';
-      if (!LIVE) {
+      if (!mode.live) {
         this.account = p.account ?? null;
         this.follows = p.follows ?? [];
         this.likes = p.likes ?? [];
@@ -66,12 +70,12 @@ class Session {
         this.#users = p.users ?? {};
       }
     } catch { /* corrupted storage: start clean */ }
-    if (LIVE) { this.#watchAuth(); this.#loadCatalog(); } else this.ready = true;
+    if (mode.live) { this.#watchAuth(); this.#loadCatalog(); } else this.ready = true;
   }
 
   save() {
     if (!browser) return;
-    const p: Persisted = LIVE
+    const p: Persisted = mode.live
       ? { account: null, follows: [], likes: [], reads: [], sub: EMPTY_SUB, density: this.density, sort: this.sort }
       : { account: this.account, follows: this.follows, likes: this.likes, reads: this.reads, saved: this.saved, hidden: this.hidden, sub: this.sub, density: this.density, sort: this.sort, users: this.#users };
     try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* quota */ }
@@ -83,7 +87,7 @@ class Session {
     if (!/^[a-z0-9_]{3,24}$/.test(handle)) throw new Error('Handle: 3–24 letters, numbers or _');
     if (password.length < 8) throw new Error('Password must be at least 8 characters');
     if (isDisposableEmail(email)) throw new Error('Please use a permanent email address');
-    if (!LIVE) {
+    if (!mode.live) {
       if (this.#users?.[email]) throw new Error('That email already has an account');
       const account: Account = { uid: 'demo-' + crypto.randomUUID().slice(0, 8), handle, displayName: handle, email, emailVerified: false, isCreator: false };
       this.#users = { ...this.#users, [email]: { pw: password, account } }; // DEMO ONLY — never store passwords like this for real
@@ -103,7 +107,7 @@ class Session {
   /** Re-send the verification email (live) or simulate clicking it (demo). */
   async verifyEmail() {
     if (!this.account) return;
-    if (!LIVE) { this.#updateAccount({ emailVerified: true }); return 'Verified (demo).'; }
+    if (!mode.live) { this.#updateAccount({ emailVerified: true }); return 'Verified (demo).'; }
     const { auth } = await fb();
     const a = await import('firebase/auth');
     await auth.currentUser?.reload();
@@ -125,7 +129,7 @@ class Session {
   }
 
   async signIn(email: string, password: string) {
-    if (!LIVE) {
+    if (!mode.live) {
       const u = this.#users?.[email];
       if (!u || u.pw !== password) throw new Error('Email or password is incorrect');
       this.account = u.account;
@@ -137,7 +141,7 @@ class Session {
   }
 
   async signInWithGoogle() {
-    if (!LIVE) throw new Error('Google sign-in needs Firebase configured (see .env.example)');
+    if (!mode.live) throw new Error('Google sign-in works on the live site, not in demo mode');
     const { auth } = await fb();
     const a = await import('firebase/auth');
     await a.signInWithPopup(auth, new a.GoogleAuthProvider());
@@ -156,14 +160,14 @@ class Session {
   }
 
   async resetPassword(email: string) {
-    if (!LIVE) throw new Error('Password reset emails need Firebase configured');
+    if (!mode.live) throw new Error('Password reset emails work on the live site, not in demo mode');
     const { auth } = await fb();
     const a = await import('firebase/auth');
     await a.sendPasswordResetEmail(auth, email);
   }
 
   async signOut() {
-    if (LIVE) { const { auth } = await fb(); await (await import('firebase/auth')).signOut(auth); }
+    if (mode.live) { const { auth } = await fb(); await (await import('firebase/auth')).signOut(auth); }
     this.account = null; this.follows = []; this.likes = []; this.reads = []; this.saved = []; this.hidden = []; this.sub = EMPTY_SUB;
     this.save();
   }
@@ -187,7 +191,7 @@ class Session {
     if (this.reads.includes(key)) return;
     this.reads = [key, ...this.reads].slice(0, 2000);
     this.save();
-    if (LIVE && this.account) this.#write('reads', key, true);
+    if (mode.live && this.account) this.#write('reads', key, true);
   }
 
   setSub(sub: Subscription) { this.sub = sub; this.save(); }
@@ -197,7 +201,7 @@ class Session {
     this[list] = on ? [id, ...this[list]] : this[list].filter((x) => x !== id);
     this.save();
     // Counters (followers, likes) are aggregated by functions — clients never write them.
-    if (LIVE && this.account) await this.#write(list, id, on);
+    if (mode.live && this.account) await this.#write(list, id, on);
   }
 
   async #write(col: string, id: string, on: boolean) {

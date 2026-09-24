@@ -103,6 +103,8 @@
       <div class="row fr"><span class="faint rules">Be kind. <a href="/legal/rules" class="lnk">Community rules</a></span><span class="grow"></span>
       <button class="btn primary" disabled={busy || !body.trim()}>Comment</button></div>
     </form>
+  {:else if gate.reason === 'soon'}
+    <p class="gate">💬 Comments open at launch, for supporters of the artists. Until then, likes and follows show creators what you enjoy.</p>
   {:else if gate.reason === 'login'}
     <p class="gate"><a href="/login?next=/s/{slug}/{id}%23comments" class="lnk">Log in</a> or <a href="/signup" class="lnk">sign up</a> to join the conversation.</p>
   {:else if gate.reason === 'verify'}

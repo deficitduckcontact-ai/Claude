@@ -8,6 +8,10 @@ Comics where your subscription goes to **the artists you pick**. Working name (m
 - The design is new-reddit / Tinyview-style (left nav, card feed, right sidebar), with the look of the "changing subscriptions" mockup and a Facebook-blue brand, plus dark mode.
 - It's an **installable app** (PWA): Add to Home Screen on iPhone, or Install on Android/desktop. Nothing depends on GitHub at runtime.
 
+## Put it online
+
+**Follow [docs/SETUP.md](docs/SETUP.md).** It takes about 15 minutes, needs no domain name, and gives you real accounts on a free `*.web.app` address.
+
 ## Run it
 
 ```bash
@@ -15,7 +19,7 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-With no `.env`, the site runs in **demo mode**. Seed comics are generated placeholder art, and accounts, following, likes, comments, checkout, creator onboarding and uploads all work, stored in your browser. The `DEMO MODE` chip in the top bar tells you which mode you're in.
+On your own computer the site runs in **demo mode**. Once deployed on Firebase Hosting it connects to its project automatically, with no keys to copy (see `src/lib/firebase.svelte.ts`). Seed comics are generated placeholder art, and accounts, following, likes, comments, checkout, creator onboarding and uploads all work, stored in your browser. The `DEMO MODE` chip in the top bar tells you which mode you're in.
 
 ```bash
 npm test             # pricing/split tests

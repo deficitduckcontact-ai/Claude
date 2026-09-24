@@ -9,13 +9,6 @@
     ],
     "rewrites": [
       {
-        "source": "/api/stripe-webhook",
-        "function": {
-          "functionId": "stripeWebhook",
-          "region": "us-central1"
-        }
-      },
-      {
         "source": "**",
         "destination": "/200.html"
       }
@@ -97,6 +90,7 @@
     },
     "ui": {
       "enabled": true
-    }
+    },
+    "singleProjectMode": true
   }
 }
