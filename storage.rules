@@ -1,20 +1,24 @@
 rules_version = '2';
 // Three areas:
-//   uploads/{uid}/**  raw masters from creators (owner write, nobody reads back)
+//   uploads/{uid}/**  raw masters from CREATORS (owner write, nobody else reads)
 //   p/**              derived FREE panels — public, immutable, CDN cached
 //   premium/**        derived PREMIUM panels — no direct access; signed URLs only
+// Never allow SVG (can carry script) — sharp output is the only thing served.
 service firebase.storage {
   match /b/{bucket}/o {
     match /uploads/{uid}/{draftId}/{file} {
+      // Creators only (custom claim set by creatorOnboard) — stops any random
+      // account from using the bucket as free file hosting.
       allow write: if request.auth != null && request.auth.uid == uid
+        && request.auth.token.creator == true
         && request.resource.size < 30 * 1024 * 1024
-        && request.resource.contentType.matches('image/(png|jpeg|webp|avif|tiff)');
+        && request.resource.contentType.matches('image/(png|jpeg|webp|avif)');
       allow read: if request.auth != null && request.auth.uid == uid;
     }
     match /avatars/{uid}/{file} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid
-        && request.resource.size < 2 * 1024 * 1024 && request.resource.contentType.matches('image/.*');
+        && request.resource.size < 2 * 1024 * 1024 && request.resource.contentType.matches('image/(png|jpeg|webp)');
     }
     match /p/{file}       { allow read: if true; allow write: if false; }
     match /premium/{file} { allow read, write: if false; }

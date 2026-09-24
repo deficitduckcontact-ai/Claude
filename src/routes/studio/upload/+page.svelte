@@ -25,7 +25,7 @@
   async function add(files: FileList | File[]) {
     err = '';
     for (const file of Array.from(files)) {
-      if (!/^image\/(png|jpeg|webp|avif|tiff)$/.test(file.type)) { err = `${file.name}: use PNG, JPG, WebP or AVIF`; continue; }
+      if (!/^image\/(png|jpeg|webp|avif)$/.test(file.type)) { err = `${file.name}: use PNG, JPG, WebP or AVIF`; continue; }
       if (file.size > 30 * 1024 * 1024) { err = `${file.name}: 30 MB max per panel`; continue; }
       const url = URL.createObjectURL(file);
       const bmp = await createImageBitmap(file);
@@ -113,9 +113,9 @@
   @media (max-width: 899px) { .cols { grid-template-columns: 1fr; } }
   .toggle { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; cursor: pointer; }
   .drop { margin: 14px 0; border: 2px dashed var(--line-strong); border-radius: 12px; padding: 26px; text-align: center; background: #fff; transition: 0.15s; }
-  .drop.over { border-color: var(--coup); background: var(--coup-tint); }
+  .drop.over { border-color: var(--brand); background: var(--brand-tint); }
   .drop p { margin: 4px 0; }
-  .pick { color: var(--coup); font-weight: 600; cursor: pointer; text-decoration: underline; }
+  .pick { color: var(--brand); font-weight: 600; cursor: pointer; text-decoration: underline; }
   .pick input { display: none; }
   .small { font-size: 12.5px; }
   .items { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px; }

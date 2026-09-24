@@ -7,5 +7,7 @@ export function ago(ms: number, now: number): string {
   if (d < 30) return `${Math.floor(d / 7)}w`;
   return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: d > 330 ? 'numeric' : undefined });
 }
+/** "3h ago", or "just now" (never "just now ago"). */
+export const agoText = (ms: number, now: number) => { const a = ago(ms, now); return a === 'just now' ? a : `${a} ago`; };
 export const compact = (n: number) => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 export const longDate = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });

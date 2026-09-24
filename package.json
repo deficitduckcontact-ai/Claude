@@ -10,7 +10,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "emulators": "firebase emulators:start",
-    "deploy": "npm run build && npm --prefix functions run build && firebase deploy"
+    "deploy": "node scripts/check-live.mjs && npm run build && npm --prefix functions run build && firebase deploy"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",

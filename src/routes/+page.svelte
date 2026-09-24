@@ -4,20 +4,19 @@
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
   import FeedRow from '$lib/components/FeedRow.svelte';
-  import LeftRail from '$lib/components/LeftRail.svelte';
+  import HeaderTabs from '$lib/components/HeaderTabs.svelte';
   import RightRail from '$lib/components/RightRail.svelte';
   import Cover from '$lib/components/Cover.svelte';
   import { session } from '$lib/session.svelte';
   import { allEpisodes, allSeries, epKey, liveEpisodes, sortFeed } from '$lib/data';
   import type { Density, Episode, SortMode } from '$lib/types';
 
-  const SORTS: { id: SortMode; label: string }[] = [
-    { id: 'hot', label: '🔥 Hot' }, { id: 'new', label: '✦ New' }, { id: 'top', label: '▲ Top' }, { id: 'following', label: '★ Following' }
-  ];
-  const DENSITIES: { id: Density; label: string }[] = [{ id: 'card', label: 'Card' }, { id: 'compact', label: 'Compact' }, { id: 'classic', label: 'Classic' }];
+  const PER_PAGE = 25;
+  const SORTS: { id: SortMode; label: string }[] = [{ id: 'hot', label: 'hot' }, { id: 'new', label: 'new' }, { id: 'top', label: 'top' }, { id: 'following', label: 'following' }];
+  const DENSITIES: { id: Density; label: string }[] = [{ id: 'classic', label: 'Classic' }, { id: 'compact', label: 'Compact' }, { id: 'card', label: 'Card' }];
 
   let live = $state<Episode[]>([]);
-  let shown = $state(25);
+  let pageNo = $state(0);
   let sel = $state(-1);
   let open = $state<string[]>([]);
   let help = $state(false);
@@ -28,32 +27,41 @@
     const seen = new Set(live.map(epKey));
     return [...live, ...allEpisodes().filter((e) => !seen.has(epKey(e)))];
   });
-  const feed = $derived(sortFeed(merged, sort, session.now, session.follows));
-  const visible = $derived(feed.slice(0, shown));
+  const feed = $derived(sortFeed(merged, sort, session.now, session.follows).filter((e) => !session.hidden.includes(epKey(e))));
+  const visible = $derived(feed.slice(pageNo * PER_PAGE, (pageNo + 1) * PER_PAGE));
   const followed = $derived(allSeries().filter((s) => session.follows.includes(s.slug)));
+  const density = $derived<Density>(browser ? session.density : 'classic');
 
   onMount(async () => { live = await liveEpisodes().catch(() => []); });
 
-  function setSort(s: SortMode) { session.sort = s; session.save(); goto(s === 'hot' ? '/' : `/?sort=${s}`, { replaceState: true, noScroll: true, keepFocus: true }); sel = -1; }
+  function setSort(s: SortMode) {
+    session.sort = s; session.save(); pageNo = 0; sel = -1;
+    goto(s === 'hot' ? '/' : `/?sort=${s}`, { replaceState: true, noScroll: true, keepFocus: true });
+  }
   function setDensity(d: Density) { session.density = d; session.save(); }
   function toggle(k: string) { open = open.includes(k) ? open.filter((x) => x !== k) : [...open, k]; }
+  function go(p: number) { pageNo = p; sel = -1; scrollTo({ top: 0 }); }
 
   async function move(d: number) {
     sel = Math.max(0, Math.min(visible.length - 1, sel + d));
     await tick();
     document.querySelector(`[data-key="${epKey(visible[sel])}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
-  // old-reddit / RES style keyboard nav
+  // old-reddit + RES keyboard nav. (No space bar: people use it to scroll.)
   function onkey(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test((e.target as HTMLElement).tagName)) return;
     const ep = visible[sel];
     switch (e.key) {
       case 'j': move(1); break;
       case 'k': move(-1); break;
-      case 'x': case ' ': if (ep) { e.preventDefault(); toggle(epKey(ep)); session.markRead(epKey(ep)); } break;
-      case 'o': case 'Enter': if (ep) goto(`/s/${ep.slug}/${ep.id}`); break;
+      case 'x': if (ep) { toggle(epKey(ep)); session.markRead(epKey(ep)); } break;
+      case 'o': case 'Enter': if (ep && sel >= 0) goto(`/s/${ep.slug}/${ep.id}`); break;
       case 'l': if (ep && session.account) session.toggleLike(epKey(ep)); break;
+      case 's': if (ep && session.account) session.toggleSave(epKey(ep)); break;
+      case 'h': if (ep && session.account) session.toggleHide(epKey(ep)); break;
       case 'f': if (ep && session.account) session.toggleFollow(ep.slug); break;
+      case 'n': if ((pageNo + 1) * PER_PAGE < feed.length) go(pageNo + 1); break;
+      case 'p': if (pageNo) go(pageNo - 1); break;
       case '?': help = !help; break;
       case 'Escape': help = false; break;
     }
@@ -63,10 +71,20 @@
 <svelte:window onkeydown={onkey} />
 <svelte:head><link rel="canonical" href="/" /></svelte:head>
 
-<div class="shell">
-  <div class="three">
-    <LeftRail />
+<HeaderTabs title="front page" tabs={SORTS.map((s) => ({ label: s.label, on: sort === s.id, onclick: () => setSort(s.id) }))}>
+  {#snippet right()}
+    <div class="right desk-only">
+      <span class="lbl">view:</span>
+      {#each DENSITIES as d}
+        <button class:on={density === d.id} aria-pressed={density === d.id} onclick={() => setDensity(d.id)}>{d.label}</button>
+      {/each}
+      <button onclick={() => (help = !help)} title="Keyboard shortcuts">⌨</button>
+    </div>
+  {/snippet}
+</HeaderTabs>
 
+<div class="shell wide">
+  <div class="two">
     <section aria-label="Comics feed">
       {#if followed.length}
         <div class="strip mob-only" aria-label="Your series">
@@ -74,72 +92,65 @@
         </div>
       {/if}
 
-      <div class="toolbar">
-        <div class="tabs" role="tablist">
-          {#each SORTS as s}
-            <button role="tab" aria-selected={sort === s.id} class:on={sort === s.id} onclick={() => setSort(s.id)}>{s.label}</button>
-          {/each}
-        </div>
-        <div class="grow"></div>
-        <div class="dens desk-only" role="radiogroup" aria-label="Density">
-          {#each DENSITIES as d}
-            <button role="radio" aria-checked={session.density === d.id} class:on={session.density === d.id} onclick={() => setDensity(d.id)}>{d.label}</button>
-          {/each}
-        </div>
-        <button class="kbd desk-only" onclick={() => (help = !help)} title="Keyboard shortcuts">⌨</button>
-      </div>
-
       {#if help}
-        <div class="card pad help">
-          <b>Keyboard</b>: <kbd>j</kbd>/<kbd>k</kbd> next/prev · <kbd>x</kbd> expand · <kbd>o</kbd> open · <kbd>l</kbd> like · <kbd>f</kbd> follow · <kbd>?</kbd> this help
+        <div class="help">
+          <b>keyboard</b>: <kbd>j</kbd>/<kbd>k</kbd> next/prev · <kbd>x</kbd> expand · <kbd>o</kbd> open · <kbd>l</kbd> like · <kbd>s</kbd> save · <kbd>h</kbd> hide · <kbd>f</kbd> follow · <kbd>n</kbd>/<kbd>p</kbd> page · <kbd>?</kbd> this
         </div>
       {/if}
 
       {#if sort === 'following' && !session.follows.length}
-        <div class="card pad empty">
+        <div class="empty">
           <h3>You're not following anyone yet.</h3>
           <p class="muted">Follow a series and its new episodes land here, in order.</p>
           <a class="btn primary" href="/series">Browse series</a>
         </div>
       {/if}
 
-      {#each visible as ep, i (epKey(ep))}
-        <FeedRow {ep} rank={i + 1} density={browser ? session.density : 'compact'} selected={sel === i}
-          expanded={open.includes(epKey(ep))} ontoggle={() => toggle(epKey(ep))} onselect={() => (sel = i)} />
-      {/each}
+      <div class="sitetable {density}">
+        {#each visible as ep, i (epKey(ep))}
+          <FeedRow {ep} rank={pageNo * PER_PAGE + i + 1} {density} selected={sel === i}
+            expanded={open.includes(epKey(ep))} ontoggle={() => toggle(epKey(ep))} onselect={() => (sel = i)} />
+        {/each}
+      </div>
 
-      {#if shown < feed.length}
-        <button class="btn block more" onclick={() => (shown += 25)}>Load more</button>
+      {#if feed.length > PER_PAGE}
+        <div class="nav">
+          view more:
+          {#if pageNo}<button onclick={() => go(pageNo - 1)}>‹ prev</button>{/if}
+          {#if pageNo && (pageNo + 1) * PER_PAGE < feed.length}<span class="sep">|</span>{/if}
+          {#if (pageNo + 1) * PER_PAGE < feed.length}<button onclick={() => go(pageNo + 1)}>next ›</button>{/if}
+        </div>
       {:else if feed.length}
         <p class="faint end">You're all caught up.</p>
       {/if}
-      <!-- TODO(live): cursor pagination (startAfter) instead of client slice once the archive grows. -->
+      <!-- TODO(live): cursor pagination (startAfter) once the archive outgrows one query. -->
     </section>
 
-    <RightRail />
+    <div class="rail"><RightRail /></div>
   </div>
 </div>
 
 <style>
-  .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-  .tabs, .dens { display: flex; gap: 2px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-  .tabs button, .dens button { border: 0; background: none; padding: 6px 11px; border-radius: 7px; font-size: 13.5px; font-weight: 600; color: var(--ink-3); cursor: pointer; }
-  .tabs button.on { background: var(--coup-tint); color: var(--coup-dark); }
-  .dens button { font-size: 12px; padding: 5px 9px; }
-  .dens button.on { background: #f1efe9; color: var(--ink); }
-  .kbd { border: 1px solid var(--line); background: #fff; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; color: var(--ink-3); }
-  .help { margin-bottom: 10px; font-size: 13px; }
-  kbd { background: #f1efe9; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 12px; }
-  .empty { text-align: center; margin-bottom: 10px; }
-  .more { margin-top: 6px; }
+  .right { display: flex; align-items: center; gap: 2px; padding-bottom: 5px; font-family: var(--classic); font-size: 11px; }
+  .lbl { color: var(--ink-4); margin-right: 3px; }
+  .right button { border: 1px solid transparent; background: none; padding: 2px 7px; border-radius: 3px; font: inherit; color: var(--link); cursor: pointer; }
+  .right button.on { background: #fff; border-color: var(--header-line); color: var(--ink); font-weight: 700; }
+  .help { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; font-size: 12.5px; font-family: var(--classic); }
+  kbd { background: var(--page); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; }
+  .empty { text-align: center; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 10px; }
+  .empty h3 { margin: 0 0 4px; }
+  .sitetable.classic { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; box-shadow: var(--shadow-sm); }
+  .nav { margin: 12px 0; font-family: var(--classic); font-size: 12px; color: var(--ink-4); display: flex; align-items: center; gap: 6px; }
+  .nav button { background: #eef4fb; border: 1px solid #c6d4e8; border-radius: 3px; padding: 2px 8px; font: inherit; font-weight: 700; color: var(--link); cursor: pointer; }
+  .nav button:hover { border-color: var(--brand); }
+  .sep { color: #ccc; }
   .end { text-align: center; font-size: 13px; }
   .strip { display: flex; gap: 12px; overflow-x: auto; padding: 12px 14px; background: #fff; border-bottom: 1px solid var(--line); scrollbar-width: none; }
   .strip a { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 62px; font-size: 10.5px; text-align: center; color: var(--ink-2); text-decoration: none; }
   .strip span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (max-width: 899px) {
-    .toolbar { position: sticky; top: var(--bar); z-index: 5; background: var(--page); padding: 8px 10px; margin: 0; }
-    .toolbar .grow { display: none; }
-    .tabs { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; } .tabs button { flex: 1; white-space: nowrap; padding: 6px 6px; font-size: 13px; }
+    .sitetable.classic { border-radius: 0; border-left: 0; border-right: 0; }
     .empty { margin: 10px; }
+    .nav { padding: 0 14px; }
   }
 </style>

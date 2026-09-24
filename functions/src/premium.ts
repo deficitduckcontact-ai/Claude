@@ -1,11 +1,12 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { bucket, db, requireUser } from './shared.js';
+import { bucket, db, episodeArg, requireUser, slugArg } from './shared.js';
 import type { StoredPanel } from './images.js';
 
 // Any active subscription unlocks every premium episode (picks only route money).
 export const premiumPanels = onCall(async (req) => {
   const uid = requireUser(req);
-  const { slug, id } = req.data ?? {};
+  const slug = slugArg(req.data?.slug);
+  const id = episodeArg(req.data?.id);
   const sub = await db.doc(`subscriptions/${uid}`).get();
   if (!['active', 'past_due', 'trialing'].includes(sub.get('status'))) throw new HttpsError('permission-denied', 'Subscribe to read premium comics');
   const ep = db.doc(`series/${slug}/episodes/${id}`);

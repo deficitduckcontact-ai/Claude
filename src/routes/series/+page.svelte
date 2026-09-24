@@ -52,7 +52,7 @@
   .sel { width: auto; height: 36px; }
   .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 16px; }
   .tags button { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 4px 12px; font-size: 13px; cursor: pointer; text-transform: capitalize; }
-  .tags button.on { background: var(--coup); border-color: var(--coup); color: #fff; }
+  .tags button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
   .item { overflow: hidden; display: flex; flex-direction: column; }
   .cov { display: block; aspect-ratio: 1; }

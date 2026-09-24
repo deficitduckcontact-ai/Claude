@@ -25,10 +25,17 @@ export const createCheckout = onCall({ secrets }, async (req) => {
   if (['active', 'past_due', 'trialing'].includes(existing.get('status'))) throw new HttpsError('failed-precondition', 'Already subscribed — change artists instead');
   // TODO(billing): annual price (req.data.interval === 'year').
   const customer = await customerFor(uid, req.auth!.token.email);
+  // Guard against double subscriptions (double-click, two tabs, webhook lag):
+  // Firestore may not know yet, so ask Stripe directly.
+  const live = await stripe().subscriptions.list({ customer, status: 'all', limit: 10 });
+  if (live.data.some((s) => ['active', 'past_due', 'trialing', 'incomplete'].includes(s.status)))
+    throw new HttpsError('failed-precondition', 'You already have a subscription — refresh the page');
   const origin = safeOrigin(req.data?.origin);
   // Picks can exceed Stripe's 500-char metadata limit, so they wait in Firestore.
   await db.doc(`users/${uid}/private/checkout`).set({ picks, at: FieldValue.serverTimestamp() });
   const session = await stripe().checkout.sessions.create({
+    // Short-lived, so a forgotten Checkout tab can't complete a second subscription hours later.
+    expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     mode: 'subscription',
     customer,
     line_items: [{ price: STRIPE_PRICE_MONTHLY.value(), quantity: picks.length }],
@@ -113,7 +120,13 @@ async function handle(event: Stripe.Event) {
       const sub = event.data.object as Stripe.Subscription;
       const uid = sub.metadata?.uid;
       if (!uid) return;
-      await db.doc(`subscriptions/${uid}`).set({
+      // Stripe doesn't guarantee delivery order — never let an older event overwrite newer state.
+      const ref = db.doc(`subscriptions/${uid}`);
+      const cur = await ref.get();
+      if ((cur.get('lastEventAt') ?? 0) > event.created) return;
+      if (cur.get('stripeSubscriptionId') && cur.get('stripeSubscriptionId') !== sub.id && event.type === 'customer.subscription.deleted') return;
+      await ref.set({
+        lastEventAt: event.created,
         stripeSubscriptionId: sub.id,
         status: event.type === 'customer.subscription.deleted' ? 'canceled' : sub.status,
         currentPeriodEnd: Timestamp.fromMillis(sub.current_period_end * 1000)
@@ -122,6 +135,13 @@ async function handle(event: Stripe.Event) {
     }
     case 'invoice.paid':
       return payCreators(event.data.object as Stripe.Invoice);
+    case 'charge.refunded':
+      return clawBack(event.data.object as Stripe.Charge);
+    case 'charge.dispute.created':
+      // TODO(disputes): reverse creator transfers on lost disputes (charge.dispute.closed, status=lost)
+      // and alert an admin. Disputes cost $15 each on top of the amount.
+      logger.warn('dispute opened', (event.data.object as Stripe.Dispute).id);
+      return;
     case 'account.updated': {
       const acct = event.data.object as Stripe.Account;
       const uid = acct.metadata?.uid;
@@ -185,4 +205,26 @@ async function payCreators(inv: Stripe.Invoice) {
     unclaimed: s.perCreator.__unclaimed__ ?? 0, at: FieldValue.serverTimestamp()
   });
   await batch.commit();
+}
+
+/**
+ * Refunds: pull back the same fraction of each creator transfer, so a refund
+ * doesn't come entirely out of TinyCoup's 15%. Idempotent per refund amount.
+ */
+async function clawBack(ch: Stripe.Charge) {
+  const invoiceId = (ch as unknown as { invoice?: string }).invoice;
+  if (!invoiceId || !ch.amount_refunded) return;
+  const fraction = ch.amount_refunded / ch.amount;
+  const rows = await db.collection('ledger').where('invoiceId', '==', invoiceId).where('state', '==', 'paid').get();
+  for (const row of rows.docs) {
+    const target = Math.round(row.get('amount') * fraction);
+    const already = row.get('reversed') ?? 0;
+    if (target <= already || !row.get('transferId')) continue;
+    await stripe().transfers.createReversal(row.get('transferId'), { amount: target - already },
+      { idempotencyKey: `reverse:${row.id}:${target}` });
+    await row.ref.update({ reversed: target });
+  }
+  // 'owed' rows for creators not yet onboarded: just reduce what's owed.
+  const owed = await db.collection('ledger').where('invoiceId', '==', invoiceId).where('state', '==', 'owed').get();
+  for (const row of owed.docs) await row.ref.update({ reversed: Math.round(row.get('amount') * fraction) });
 }

@@ -145,7 +145,7 @@
   .slots { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
   .dots { display: flex; gap: 4px; flex-wrap: wrap; max-width: 260px; }
   .dot { width: 9px; height: 9px; border-radius: 99px; background: #e4e4e4; }
-  .dot.on { background: var(--coup); }
+  .dot.on { background: var(--brand); }
   .dot.pop, .tile.just .tick { animation: pop 0.32s cubic-bezier(0.3, 1.5, 0.5, 1); }
   @keyframes pop { 0% { transform: scale(0.72); } 55% { transform: scale(1.2); } 100% { transform: scale(1); } }
   .mini { height: 32px; border: 1px solid transparent; border-radius: 9px; background: #f5f4f2; font-size: 12.5px; padding: 0 10px; }
@@ -157,16 +157,16 @@
   .tile { position: relative; display: flex; flex-direction: column; border: 1px solid #efefef; border-radius: 10px; cursor: pointer; overflow: hidden; transition: 0.16s; animation: tileIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both; animation-delay: calc(var(--i) * 11ms); }
   @keyframes tileIn { from { opacity: 0; transform: translateY(7px) scale(0.98); } }
   .tile:hover { border-color: var(--line-strong); transform: translateY(-1px); box-shadow: 0 5px 13px rgba(0, 0, 0, 0.06); }
-  .tile.sel { border-color: var(--coup); box-shadow: 0 0 0 2px var(--coup-ring); }
-  .tile:focus-within { box-shadow: 0 0 0 3px var(--coup-ring); }
+  .tile.sel { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-ring); }
+  .tile:focus-within { box-shadow: 0 0 0 3px var(--brand-ring); }
   .tile input { position: absolute; opacity: 0; width: 0; height: 0; }
   .thumbwrap { position: relative; aspect-ratio: 1; }
   .thumbwrap :global(img) { aspect-ratio: 1; }
   .tick { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 6px; background: rgba(255, 255, 255, 0.85); border: 1.5px solid rgba(23, 23, 23, 0.16); display: grid; place-items: center; }
   .tick svg { width: 11px; height: 11px; stroke: #fff; stroke-width: 3.2; fill: none; opacity: 0; }
-  .tile.sel .tick { background: var(--coup); border-color: var(--coup); }
+  .tile.sel .tick { background: var(--brand); border-color: var(--brand); }
   .tile.sel .tick svg { opacity: 1; }
-  .badge { position: absolute; top: 6px; left: 6px; background: rgba(255, 255, 255, 0.93); border-radius: 99px; font-size: 8.5px; font-weight: 700; color: var(--coup); padding: 2px 6px; }
+  .badge { position: absolute; top: 6px; left: 6px; background: rgba(255, 255, 255, 0.93); border-radius: 99px; font-size: 8.5px; font-weight: 700; color: var(--brand); padding: 2px 6px; }
   .info { padding: 7px 8px 8px; }
   .nm { font-size: 11.5px; font-weight: 600; color: var(--ink-2); line-height: 1.18; }
   .by { font-size: 10px; color: #8e8e8e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }

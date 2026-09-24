@@ -43,10 +43,10 @@
 <style>
   .hero { text-align: center; padding: 56px 20px 40px; background: linear-gradient(var(--mint), var(--page)); }
   .hero h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 auto 10px; max-width: 18ch; line-height: 1.1; }
-  .hero em { font-style: normal; color: var(--coup); }
+  .hero em { font-style: normal; color: var(--brand); }
   .hero p { color: var(--ink-3); font-size: 18px; margin: 0 0 20px; }
   h2 { margin: 0 0 10px; font-size: 18px; } h3 { margin: 0 0 6px; font-size: 15px; }
-  input[type='range'] { width: 100%; accent-color: var(--coup); }
+  input[type='range'] { width: 100%; accent-color: var(--brand); }
   .big { font-size: 40px; font-weight: 800; color: var(--ok); } .big small { font-size: 16px; color: var(--ink-3); font-weight: 500; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 14px 0; }
   .grid p { margin: 0; font-size: 14px; color: var(--ink-3); line-height: 1.5; }

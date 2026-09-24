@@ -3,6 +3,7 @@
   import Logo from './Logo.svelte';
   import { session } from '$lib/session.svelte';
   import { LIVE } from '$lib/firebase';
+  import { safeNext } from '$lib/nav';
 
   let { mode }: { mode: 'login' | 'signup' } = $props();
   let email = $state('');
@@ -11,7 +12,7 @@
   let err = $state('');
   let busy = $state(false);
 
-  const next = () => { const n = new URLSearchParams(location.search).get('next') ?? '/'; return n.startsWith('/') && !n.startsWith('//') ? n : '/'; };
+  const next = () => safeNext(new URLSearchParams(location.search).get('next'));
   $effect(() => { if (session.ready && session.account) goto(next(), { replaceState: true }); });
 
   async function submit(e: SubmitEvent) {
@@ -69,7 +70,7 @@
   .or::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
   .or span { background: #fff; padding: 0 10px; position: relative; }
   .alt { font-size: 13.5px; text-align: center; margin: 16px 0 6px; }
-  .alt a, .fine a { color: var(--coup); font-weight: 600; }
+  .alt a, .fine a { color: var(--brand); font-weight: 600; }
   .fine { font-size: 12px; text-align: center; margin: 0 0 12px; }
   @media (max-width: 520px) { .auth { margin: 0; border-radius: 0; border: 0; box-shadow: none; } }
 </style>

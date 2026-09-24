@@ -36,8 +36,21 @@ export function safeOrigin(origin: unknown): string {
   if (typeof origin === 'string' && allowed.includes(origin)) return origin;
   return allowed[0];
 }
+// Ids arrive from clients and are interpolated into Firestore paths — a "/"
+// would let a caller address a different document. Validate every one.
+export const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
+export const EP_ID_RE = /^ep-\d{1,6}$/;
+export function slugArg(v: unknown): string {
+  if (typeof v !== 'string' || !SLUG_RE.test(v)) throw new HttpsError('invalid-argument', 'Bad series id');
+  return v;
+}
+export function episodeArg(v: unknown): string {
+  if (typeof v !== 'string' || !EP_ID_RE.test(v)) throw new HttpsError('invalid-argument', 'Bad episode id');
+  return v;
+}
+
 export async function validPicks(picks: unknown): Promise<string[]> {
-  if (!Array.isArray(picks) || !picks.length || picks.length > 40 || !picks.every((p) => typeof p === 'string'))
+  if (!Array.isArray(picks) || !picks.length || picks.length > 40 || !picks.every((p) => typeof p === 'string' && SLUG_RE.test(p)))
     throw new HttpsError('invalid-argument', 'Pick between 1 and 40 artists');
   const unique = [...new Set(picks as string[])];
   const docs = await db.getAll(...unique.map((s) => db.doc(`series/${s}`)));

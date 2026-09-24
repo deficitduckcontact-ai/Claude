@@ -48,6 +48,7 @@ export interface Comment {
   handle: string;
   body: string;
   createdAt: number;
+  parentId?: string;
 }
 
 export interface Account {

@@ -4,7 +4,7 @@
 // that subscription state is only ever written by Cloud Functions).
 import { LIVE, fb } from './firebase';
 import { SEED_NOW } from './seed';
-import type { Account, Density, SortMode, Subscription } from './types';
+import type { Account, Creator, Density, Series, SortMode, Subscription } from './types';
 
 const KEY = 'tc:session';
 const browser = typeof window !== 'undefined';
@@ -14,6 +14,8 @@ interface Persisted {
   follows: string[];
   likes: string[];
   reads: string[];
+  saved?: string[];
+  hidden?: string[];
   sub: Subscription;
   density: Density;
   sort: SortMode;
@@ -30,6 +32,11 @@ class Session {
   follows = $state<string[]>([]);
   likes = $state<string[]>([]);
   reads = $state<string[]>([]);
+  saved = $state<string[]>([]);
+  hidden = $state<string[]>([]);
+  // Live mode: series/creators created after the last build (merged over seed data).
+  liveSeries = $state<Series[]>([]);
+  liveCreators = $state<Creator[]>([]);
   sub = $state<Subscription>(EMPTY_SUB);
   density = $state<Density>('compact');
   sort = $state<SortMode>('hot');
@@ -44,25 +51,28 @@ class Session {
     setInterval(() => (this.now = Date.now()), 60_000);
     try {
       const p: Partial<Persisted> = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-      this.density = p.density ?? (matchMedia('(min-width: 900px)').matches ? 'compact' : 'card');
+      // Desktop defaults to the old-reddit "classic" list; phones to big cards.
+      this.density = p.density ?? (matchMedia('(min-width: 900px)').matches ? 'classic' : 'card');
       this.sort = p.sort ?? 'hot';
       if (!LIVE) {
         this.account = p.account ?? null;
         this.follows = p.follows ?? [];
         this.likes = p.likes ?? [];
         this.reads = p.reads ?? [];
+        this.saved = p.saved ?? [];
+        this.hidden = p.hidden ?? [];
         this.sub = p.sub ?? EMPTY_SUB;
         this.#users = p.users ?? {};
       }
     } catch { /* corrupted storage: start clean */ }
-    if (LIVE) this.#watchAuth(); else this.ready = true;
+    if (LIVE) { this.#watchAuth(); this.#loadCatalog(); } else this.ready = true;
   }
 
   save() {
     if (!browser) return;
     const p: Persisted = LIVE
       ? { account: null, follows: [], likes: [], reads: [], sub: EMPTY_SUB, density: this.density, sort: this.sort }
-      : { account: this.account, follows: this.follows, likes: this.likes, reads: this.reads, sub: this.sub, density: this.density, sort: this.sort, users: this.#users };
+      : { account: this.account, follows: this.follows, likes: this.likes, reads: this.reads, saved: this.saved, hidden: this.hidden, sub: this.sub, density: this.density, sort: this.sort, users: this.#users };
     try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* quota */ }
   }
 
@@ -81,10 +91,10 @@ class Session {
     const { auth, db } = await fb();
     const a = await import('firebase/auth');
     const f = await import('firebase/firestore');
+    if ((await f.getDoc(f.doc(db, 'handles', handle))).exists()) throw new Error('That handle is taken');
     const cred = await a.createUserWithEmailAndPassword(auth, email, password);
     await a.updateProfile(cred.user, { displayName: handle });
-    // TODO(live): enforce handle uniqueness with a `handles/{handle}` doc in a transaction (or a callable).
-    await f.setDoc(f.doc(db, 'users', cred.user.uid), { handle, displayName: handle, createdAt: f.serverTimestamp() });
+    await this.#claimProfile(cred.user.uid, handle);
     await a.sendEmailVerification(cred.user).catch(() => {});
   }
 
@@ -105,7 +115,18 @@ class Session {
     const { auth } = await fb();
     const a = await import('firebase/auth');
     await a.signInWithPopup(auth, new a.GoogleAuthProvider());
-    // TODO(live): first Google sign-in has no users/{uid} doc — route to /welcome to pick a handle.
+    // First Google sign-in: #watchAuth creates a profile with a generated handle.
+    // TODO: a /welcome step to let them choose it.
+  }
+
+  /** Claim handles/{handle} and create users/{uid} in one batch (rules check both). */
+  async #claimProfile(uid: string, handle: string) {
+    const { db } = await fb();
+    const f = await import('firebase/firestore');
+    const b = f.writeBatch(db);
+    b.set(f.doc(db, 'handles', handle), { uid });
+    b.set(f.doc(db, 'users', uid), { handle, displayName: handle, createdAt: f.serverTimestamp() });
+    await b.commit(); // fails if the handle was taken in the meantime
   }
 
   async resetPassword(email: string) {
@@ -117,7 +138,7 @@ class Session {
 
   async signOut() {
     if (LIVE) { const { auth } = await fb(); await (await import('firebase/auth')).signOut(auth); }
-    this.account = null; this.follows = []; this.likes = []; this.reads = []; this.sub = EMPTY_SUB;
+    this.account = null; this.follows = []; this.likes = []; this.reads = []; this.saved = []; this.hidden = []; this.sub = EMPTY_SUB;
     this.save();
   }
 
@@ -133,6 +154,8 @@ class Session {
   // ---------------- social ----------------
   async toggleFollow(slug: string) { await this.#toggle('follows', slug); }
   async toggleLike(key: string) { await this.#toggle('likes', key); }
+  async toggleSave(key: string) { await this.#toggle('saved', key); }
+  async toggleHide(key: string) { await this.#toggle('hidden', key); }
   markRead(key: string) {
     if (this.reads.includes(key)) return;
     this.reads = [key, ...this.reads].slice(0, 2000);
@@ -142,7 +165,7 @@ class Session {
 
   setSub(sub: Subscription) { this.sub = sub; this.save(); }
 
-  async #toggle(list: 'follows' | 'likes', id: string) {
+  async #toggle(list: 'follows' | 'likes' | 'saved' | 'hidden', id: string) {
     const on = !this[list].includes(id);
     this[list] = on ? [id, ...this[list]] : this[list].filter((x) => x !== id);
     this.save();
@@ -157,6 +180,25 @@ class Session {
     await (on ? f.setDoc(ref, { at: f.serverTimestamp() }) : f.deleteDoc(ref));
   }
 
+  /** Live mode: series + creators from Firestore (prerendered pages only know the seed). */
+  async #loadCatalog() {
+    try {
+      const { db } = await fb();
+      const f = await import('firebase/firestore');
+      const [ss, cs] = await Promise.all([
+        f.getDocs(f.query(f.collection(db, 'series'), f.limit(500))),
+        f.getDocs(f.query(f.collection(db, 'creators'), f.limit(1000)))
+      ]);
+      const hue = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+      this.liveSeries = ss.docs.map((d) => {
+        const x = d.data();
+        return { slug: d.id, title: x.title, tagline: x.tagline ?? '', about: x.about ?? '', creatorUids: x.creatorIds ?? [], hue: hue(d.id), followers: x.followers ?? 0, tags: x.tags ?? [], schedule: x.schedule };
+      });
+      this.liveCreators = cs.docs.map((d) => ({ uid: d.id, name: d.get('displayName') || d.get('handle') || 'Creator', handle: d.get('handle') ?? d.id, bio: d.get('bio') }));
+      // TODO(scale): past a few hundred series, load on demand instead of all at boot.
+    } catch { /* offline: seed data still works */ }
+  }
+
   async #watchAuth() {
     const { auth, db } = await fb();
     const a = await import('firebase/auth');
@@ -165,14 +207,24 @@ class Session {
     a.onAuthStateChanged(auth, async (user) => {
       unsubSub?.(); unsubSub = null;
       if (!user) { this.account = null; this.follows = []; this.likes = []; this.sub = EMPTY_SUB; this.ready = true; return; }
-      const token = await user.getIdTokenResult();
-      const prof = (await f.getDoc(f.doc(db, 'users', user.uid))).data();
+      // Force-refresh after Stripe onboarding so the new `creator` claim shows up.
+      const token = await user.getIdTokenResult(location.search.includes('onboarded'));
+      let prof = (await f.getDoc(f.doc(db, 'users', user.uid))).data();
+      if (!prof) {
+        // e.g. first Google sign-in: generate a free handle from the email.
+        const base = (user.email ?? 'reader').split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 16).padEnd(3, '0');
+        for (let i = 0; i < 5 && !prof; i++) {
+          const handle = i ? `${base}${Math.floor(Math.random() * 9000 + 1000)}` : base;
+          try { await this.#claimProfile(user.uid, handle); prof = { handle, displayName: user.displayName ?? handle }; } catch { /* taken, retry */ }
+        }
+      }
       this.account = {
         uid: user.uid, email: user.email ?? '', handle: prof?.handle ?? user.uid.slice(0, 8),
         displayName: prof?.displayName ?? user.displayName ?? '', isCreator: token.claims.creator === true
       };
       const ids = async (c: string) => (await f.getDocs(f.collection(db, 'users', user.uid, c))).docs.map((d) => d.id);
-      [this.follows, this.likes] = await Promise.all([ids('follows'), ids('likes')]);
+      [this.follows, this.likes, this.saved, this.hidden] = await Promise.all([ids('follows'), ids('likes'), ids('saved'), ids('hidden')]);
+      // TODO(scale): `reads` grows forever — keep only the last ~500 and load lazily.
       unsubSub = f.onSnapshot(f.doc(db, 'subscriptions', user.uid), (d) => {
         const x = d.data();
         this.sub = x ? { status: x.status, picks: x.picks ?? [], currentPeriodEnd: x.currentPeriodEnd?.toMillis?.(), since: x.since?.toMillis?.() } : EMPTY_SUB;

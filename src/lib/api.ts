@@ -132,12 +132,12 @@ export async function listComments(slug: string, id: string): Promise<Comment[]>
     const { db } = await fb();
     const f = await import('firebase/firestore');
     const snap = await f.getDocs(f.query(f.collection(db, 'series', slug, 'episodes', id, 'comments'), f.orderBy('createdAt', 'asc'), f.limit(200)));
-    return snap.docs.map((d) => ({ id: d.id, uid: d.data().uid, handle: d.data().handle, body: d.data().body, createdAt: d.data().createdAt?.toMillis?.() ?? Date.now() }));
+    return snap.docs.map((d) => ({ id: d.id, uid: d.data().uid, handle: d.data().handle, body: d.data().body, parentId: d.data().parentId, createdAt: d.data().createdAt?.toMillis?.() ?? Date.now() }));
   }
   try { return JSON.parse(localStorage.getItem(CKEY(slug, id)) ?? '[]'); } catch { return []; }
 }
 
-export async function postComment(slug: string, id: string, body: string): Promise<Comment> {
+export async function postComment(slug: string, id: string, body: string, parentId?: string): Promise<Comment> {
   const a = session.account;
   if (!a) throw new Error('Sign in to comment');
   body = body.trim();
@@ -145,10 +145,11 @@ export async function postComment(slug: string, id: string, body: string): Promi
   if (LIVE) {
     const { db } = await fb();
     const f = await import('firebase/firestore');
-    const ref = await f.addDoc(f.collection(db, 'series', slug, 'episodes', id, 'comments'), { uid: a.uid, handle: a.handle, body, createdAt: f.serverTimestamp() });
-    return { id: ref.id, uid: a.uid, handle: a.handle, body, createdAt: Date.now() };
+    const data = { uid: a.uid, handle: a.handle, body, createdAt: f.serverTimestamp(), ...(parentId ? { parentId } : {}) };
+    const ref = await f.addDoc(f.collection(db, 'series', slug, 'episodes', id, 'comments'), data);
+    return { id: ref.id, uid: a.uid, handle: a.handle, body, parentId, createdAt: Date.now() };
   }
-  const c: Comment = { id: crypto.randomUUID(), uid: a.uid, handle: a.handle, body, createdAt: Date.now() };
+  const c: Comment = { id: crypto.randomUUID().slice(0, 12), uid: a.uid, handle: a.handle, body, parentId, createdAt: Date.now() };
   localStorage.setItem(CKEY(slug, id), JSON.stringify([...(await listComments(slug, id)), c]));
   return c;
 }

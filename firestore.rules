@@ -2,7 +2,8 @@ rules_version = '2';
 // TinyCoup Firestore rules.
 // Principle: anything that touches money or counters is written ONLY by Cloud
 // Functions (Admin SDK bypasses rules). Clients write their own profile,
-// follows, likes and comments.
+// follows, likes, reads and comments — and every client write is shape-checked.
+// TODO(launch): turn on App Check enforcement for Firestore in the console.
 service cloud.firestore {
   match /databases/{db}/documents {
     function signedIn() { return request.auth != null; }
@@ -12,19 +13,40 @@ service cloud.firestore {
         request.auth.uid in get(/databases/$(db)/documents/series/$(slug)).data.creatorIds;
     }
     function onlyChanged(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+    function str(v, max) { return v is string && v.size() <= max; }
+    function validHandle(h) { return h is string && h.matches('^[a-z0-9_]{3,24}$'); }
+    // Marker docs (follows, likes, reads): exactly { at: <server time> }.
+    function marker() { return request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time; }
+
+    // One doc per handle → handles are unique and can't be squatted twice.
+    match /handles/{handle} {
+      allow read: if true;
+      allow create: if signedIn() && validHandle(handle)
+        && request.resource.data.keys().hasOnly(['uid']) && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false; // TODO: handle change via a callable (release old + claim new atomically)
+    }
 
     match /users/{uid} {
       allow read: if true; // public profile (handle, name, avatar)
       allow create: if isMe(uid)
         && request.resource.data.keys().hasOnly(['handle', 'displayName', 'avatar', 'bio', 'createdAt'])
-        && request.resource.data.handle is string && request.resource.data.handle.size() <= 24;
-      allow update: if isMe(uid) && onlyChanged(['displayName', 'avatar', 'bio']);
+        && validHandle(request.resource.data.handle)
+        // the handle must be claimed by this same user in the same batch
+        && getAfter(/databases/$(db)/documents/handles/$(request.resource.data.handle)).data.uid == request.auth.uid
+        && str(request.resource.data.get('displayName', ''), 50)
+        && request.resource.data.createdAt == request.time;
+      allow update: if isMe(uid) && onlyChanged(['displayName', 'avatar', 'bio'])
+        && str(request.resource.data.get('displayName', ''), 50)
+        && str(request.resource.data.get('bio', ''), 400)
+        && str(request.resource.data.get('avatar', ''), 300);
 
-      match /follows/{slug} { allow read: if isMe(uid); allow create, delete: if isMe(uid); }
-      match /likes/{epKey}   { allow read: if isMe(uid); allow create, delete: if isMe(uid); }
-      match /reads/{epKey}   { allow read, write: if isMe(uid); }
-      // stripe customer id etc. — functions only
-      match /private/{doc}   { allow read: if isMe(uid); allow write: if false; }
+      match /follows/{slug} { allow read: if isMe(uid); allow create: if isMe(uid) && marker(); allow delete: if isMe(uid); }
+      match /likes/{epKey}  { allow read: if isMe(uid); allow create: if isMe(uid) && marker(); allow delete: if isMe(uid); }
+      match /saved/{epKey}  { allow read: if isMe(uid); allow create: if isMe(uid) && marker(); allow delete: if isMe(uid); }
+      match /hidden/{epKey} { allow read: if isMe(uid); allow create: if isMe(uid) && marker(); allow delete: if isMe(uid); }
+      match /reads/{epKey}  { allow read: if isMe(uid); allow create, update: if isMe(uid) && marker(); }
+      // stripe customer id, pending checkout picks — functions only
+      match /private/{doc}  { allow read: if isMe(uid); allow write: if false; }
     }
 
     // Subscription state mirrors Stripe. Functions write it; the owner reads it.
@@ -32,36 +54,53 @@ service cloud.firestore {
 
     match /creators/{uid} {
       allow read: if true;
-      allow update: if isMe(uid) && onlyChanged(['displayName', 'bio', 'links', 'avatar']);
+      allow update: if isMe(uid) && onlyChanged(['displayName', 'bio', 'links', 'avatar'])
+        && str(request.resource.data.get('displayName', ''), 50) && str(request.resource.data.get('bio', ''), 600);
       allow create, delete: if false; // created by the onboarding function
     }
 
     match /series/{slug} {
       allow read: if true;
-      allow update: if isCreatorOf(slug) && onlyChanged(['title', 'tagline', 'about', 'cover', 'tags']);
+      allow update: if isCreatorOf(slug) && onlyChanged(['title', 'tagline', 'about', 'cover', 'tags'])
+        && str(request.resource.data.title, 60) && str(request.resource.data.tagline, 90)
+        && str(request.resource.data.about, 1200) && request.resource.data.tags is list && request.resource.data.tags.size() <= 5;
       allow create, delete: if false; // createSeries function
 
       match /episodes/{epId} {
-        // Episode docs never contain premium image paths — those come from
-        // the premiumPanels callable as short-lived signed URLs.
+        // Episode docs never contain premium image paths — those live in
+        // episodes/{id}/private/* (no rule → denied) and are served as signed URLs.
         allow read: if resource.data.status == 'published' || isCreatorOf(slug);
         allow write: if false; // publishEpisode function
 
         match /comments/{cid} {
           allow read: if true;
           allow create: if signedIn()
+            && request.resource.data.keys().hasOnly(['uid', 'handle', 'body', 'createdAt', 'parentId'])
             && request.resource.data.uid == request.auth.uid
+            // no impersonation: the handle shown must be the author's real handle
+            && request.resource.data.handle == get(/databases/$(db)/documents/users/$(request.auth.uid)).data.handle
             && request.resource.data.body is string
             && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 4000
-            && request.resource.data.keys().hasOnly(['uid', 'handle', 'body', 'createdAt', 'parentId']);
+            && request.resource.data.createdAt == request.time
+            && (!('parentId' in request.resource.data) || str(request.resource.data.parentId, 40));
           allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isCreatorOf(slug));
+          // TODO(moderation): rate limiting + reports queue → move creates to a callable.
         }
       }
+    }
+
+    // Collection-group queries (the home feed) need their own recursive match.
+    match /{path=**}/episodes/{epId} {
+      allow read: if resource.data.status == 'published';
     }
 
     // Money trail — never client readable except a creator's own payout rows.
     match /ledger/{id}       { allow read: if signedIn() && resource.data.creatorUid == request.auth.uid; allow write: if false; }
     match /stripeEvents/{id} { allow read, write: if false; }
-    match /waitlist/{id}     { allow create: if request.resource.data.keys().hasOnly(['email', 'createdAt', 'creator']); }
+    match /waitlist/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'createdAt', 'creator'])
+        && request.resource.data.email is string && request.resource.data.email.matches('^[^@\\s]{1,64}@[^@\\s]{1,190}$')
+        && request.resource.data.creator is bool && request.resource.data.createdAt == request.time;
+    }
   }
 }

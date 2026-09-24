@@ -40,17 +40,17 @@
 <style>
   .hero { text-align: center; padding: 56px 20px 40px; background: linear-gradient(var(--cream), var(--page)); }
   .hero h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 auto 10px; max-width: 18ch; line-height: 1.1; }
-  .hero em { font-style: normal; color: var(--coup); }
+  .hero em { font-style: normal; color: var(--brand); }
   .hero p { color: var(--ink-3); font-size: 18px; margin: 0 0 20px; }
   .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-  .num { width: 28px; height: 28px; border-radius: 99px; background: var(--coup-tint); color: var(--coup-dark); font-weight: 800; display: grid; place-items: center; }
+  .num { width: 28px; height: 28px; border-radius: 99px; background: var(--brand-tint); color: var(--brand-dark); font-weight: 800; display: grid; place-items: center; }
   .steps h3 { margin: 10px 0 4px; font-size: 16px; } .steps p { margin: 0; font-size: 14px; color: var(--ink-3); }
   .calc { margin: 20px 0; } .calc h2 { margin: 0 0 12px; font-size: 18px; }
   .calc label { display: flex; align-items: center; gap: 10px; font-size: 14px; flex-wrap: wrap; }
-  .calc input { accent-color: var(--coup); flex: 1; min-width: 140px; }
+  .calc input { accent-color: var(--brand); flex: 1; min-width: 140px; }
   .bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; margin: 14px 0 8px; font-size: 12px; font-weight: 700; color: #fff; }
   .bar span { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; overflow: hidden; min-width: 0; }
-  .a { background: var(--ok); } .f { background: #9a9a9a; } .p { background: var(--coup); }
+  .a { background: var(--ok); } .f { background: #9a9a9a; } .p { background: var(--brand); }
   details { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
   summary { font-weight: 600; cursor: pointer; } details p { margin: 8px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
 </style>

@@ -9,7 +9,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
-import { bucket, db, requireCreator } from './shared.js';
+import { bucket, db, requireCreator, slugArg } from './shared.js';
 
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 const VARIANTS = [
@@ -25,7 +25,8 @@ export interface StoredPanel { base: string; w: number; h: number }
 export async function derive(master: Buffer, area: 'p' | 'premium'): Promise<StoredPanel> {
   const hash = createHash('sha256').update(master).digest('hex').slice(0, 20);
   const base = `${area}/${hash}`;
-  const img = sharp(master, { failOn: 'error' }).rotate().toColourspace('srgb');
+  // limitInputPixels guards against decompression bombs (tiny file, gigantic canvas).
+  const img = sharp(master, { failOn: 'error', limitInputPixels: 80_000_000 }).rotate().toColourspace('srgb');
   const meta = await img.metadata();
   const b = bucket();
   let outW = 0, outH = 0;
@@ -43,7 +44,8 @@ export async function derive(master: Buffer, area: 'p' | 'premium'): Promise<Sto
 
 export const publishEpisode = onCall({ memory: '2GiB', timeoutSeconds: 300, cpu: 2 }, async (req) => {
   const uid = requireCreator(req);
-  const { draftId, slug, title, caption = '', premium = false, count, scheduleAt } = req.data ?? {};
+  const { draftId, title, caption = '', premium = false, count, scheduleAt } = req.data ?? {};
+  const slug = slugArg(req.data?.slug);
   if (typeof draftId !== 'string' || !/^[\w-]{8,64}$/.test(draftId)) throw new HttpsError('invalid-argument', 'Bad draft');
   if (typeof title !== 'string' || !title.trim() || title.length > 80) throw new HttpsError('invalid-argument', 'Title required (≤80 chars)');
   const seriesRef = db.doc(`series/${slug}`);

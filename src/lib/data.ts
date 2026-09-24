@@ -21,9 +21,14 @@ export function saveLocal<T>(key: 'tc:episodes' | 'tc:series', item: T) {
   catch { throw new Error('Browser storage is full — demo mode keeps uploads locally. Remove a demo episode or connect Firebase.'); }
 }
 
-export const allSeries = (): Series[] => [...local<Series>(LOCAL_SERIES), ...SERIES];
+export function allSeries(): Series[] {
+  const live = session.liveSeries;
+  const seen = new Set(live.map((s) => s.slug));
+  return [...local<Series>(LOCAL_SERIES), ...live, ...SERIES.filter((s) => !seen.has(s.slug))];
+}
 export const getSeries = (slug: string) => allSeries().find((s) => s.slug === slug);
-export const getCreator = (uid: string): Creator | undefined => CREATORS.find((c) => c.uid === uid);
+export const getCreator = (uid: string): Creator | undefined =>
+  session.liveCreators.find((c) => c.uid === uid) ?? CREATORS.find((c) => c.uid === uid);
 export const creatorsOf = (s: Series) => s.creatorUids.map(getCreator).filter(Boolean) as Creator[];
 export const creatorLine = (s: Series) => creatorsOf(s).map((c) => c.name).join(' & ') || 'New creator';
 

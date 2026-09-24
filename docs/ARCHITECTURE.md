@@ -10,7 +10,17 @@
 | Images | Cloud Storage + `sharp` in Functions | Content-hashed, immutable, cache forever. |
 | Money | Stripe Billing + Checkout + Customer Portal + Connect Express | One subscription per reader; per-invoice transfers to creators. |
 
-The UI lineage is the "changing subscriptions" mockup (`changing-subscriptions.web.app`): same cream/amber/mint/ink tokens, tile picker, dot meter and sticky money footer. Tinyview red became TinyCoup violet `#5B3FE0`.
+The UI lineage is the "changing subscriptions" mockup (`changing-subscriptions.web.app`): tile picker, dot meter, sticky money footer, and cream/amber/mint accents. Brand colour is Facebook-style blue `#1877F2` on Facebook's `#F0F2F5` grey.
+
+The desktop layout borrows from **old reddit**, not Tinyview:
+- a "MY SERIES" strip across the top
+- a light-blue header with tabs on its bottom edge
+- a fluid list with a right sidebar and no left nav
+- dense Verdana rows: rank, likes, 70px thumbnail, blue titles that turn purple once read, "submitted … by … to s/series"
+- an expando button, and comments · share · save · hide · follow links
+- threaded `[–]` comments, and "view more: next ›" paging
+
+Series pages work like subreddits.
 
 ## Money flow
 
@@ -60,6 +70,34 @@ Counters (likes, followers, comments) are incremented by Firestore triggers, nev
 ## Demo mode
 
 `LIVE = Boolean(VITE_FIREBASE_API_KEY && VITE_FIREBASE_PROJECT_ID)`. When false, `session.svelte.ts` and `api.ts` fall back to localStorage for every flow. The same UI and code paths run, only the storage differs. Demo passwords are stored in plain localStorage: **demo only**.
+
+## Security model (reviewed)
+
+- **Money is server-only.** `subscriptions`, `ledger`, `creators`, `series` creation and `episodes` writes are denied to clients. Stripe webhooks are signature-verified and idempotent (`stripeEvents/{id}`). Out-of-order events are ignored via `lastEventAt`, and transfers carry idempotency keys.
+- **No impersonation.** Handles are unique (`handles/{handle}`, claimed in the same batch as the profile). A comment's `handle` must equal the author's real handle, and `createdAt` must be server time.
+- **Shape-checked client writes.** follows/likes/saved/hidden/reads are exactly `{at: request.time}`, and every string has a length cap.
+- **Path injection.** Every client-supplied slug/episode id is regex-validated before use in a Firestore path.
+- **Premium content.** Premium panel paths never appear in public docs. They're served as 15-minute signed URLs to active subscribers only.
+- **Uploads.** Only accounts with the `creator` claim can upload (30 MB, png/jpeg/webp/avif only; no SVG). `sharp` has `limitInputPixels` against decompression bombs.
+- **Double billing.** `createCheckout` asks Stripe for existing subscriptions, not just Firestore, and Checkout sessions expire after 30 minutes.
+- **Refunds** reverse the same fraction of each creator transfer.
+- **Open redirects.** `?next=` goes through `safeNext` (tested).
+- **Demo mode can't ship by accident.** `npm run deploy` refuses to build without Firebase config unless `VITE_ALLOW_DEMO=true`.
+
+### Known pitfalls, still open
+
+| Risk | Why it matters | Plan |
+|---|---|---|
+| No App Check / rate limits | Bots can spam sign-ups, comments, likes (and trigger counter functions) | Enable App Check (reCAPTCHA Enterprise) on Firestore/Functions; move comments to a callable with per-user limits |
+| Chargebacks | $15 fee each, and creators were already paid | Handle `charge.dispute.closed` (lost) → reverse transfers; Stripe Radar rules |
+| Sales tax / VAT / GST | Digital subscriptions are taxable in the EU, UK, Canada and many US states; TinyCoup is merchant of record | Stripe Tax, prices tax-inclusive or added at checkout |
+| Cross-border payouts | Stripe Connect can only pay creators in other countries from a **US** platform account | Decide where the business is incorporated before inviting non-US creators |
+| International card fees | +1.5% international card, +1% FX. On a $2.49 pick the platform goes negative | Accept it (not for profit) or set a small FX-aware minimum |
+| Signed URLs need IAM | `getSignedUrl` needs the Functions service account to hold *Service Account Token Creator* | Grant it once in IAM |
+| Moderation / DMCA / age | Anyone who onboards can publish immediately; users under 13 (COPPA) | Report button + review queue, registered DMCA agent, age gate at sign-up |
+| Account deletion (GDPR/CCPA) | Required by law and by app stores | Callable: cancel Stripe sub, delete auth + user docs, anonymise comments |
+| `reads` grows forever | Firestore cost per user over years | Cap at ~500 and prune in a scheduled job |
+| Rules untested | A rule typo can open a hole | Add `@firebase/rules-unit-testing` tests against the emulator in CI |
 
 ## Launch TODO
 

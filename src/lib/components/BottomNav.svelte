@@ -24,5 +24,5 @@
   .bn { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: calc(var(--bottom-nav) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px); border-top: 1px solid var(--line); display: none; }
   @media (max-width: 899px) { .bn { display: flex; } }
   a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10.5px; font-weight: 600; color: var(--ink-4); text-decoration: none !important; }
-  a.on { color: var(--coup); }
+  a.on { color: var(--brand); }
 </style>
