@@ -45,5 +45,5 @@
   .chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin: 18px auto 22px; }
   .c { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px 5px 5px; font-size: 12.5px; animation: rise 0.32s both; animation-delay: calc(0.2s + var(--i) * 38ms); }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
-  .receipt { background: var(--cream); border: 1px solid #f0e3bc; border-radius: 12px; padding: 14px 16px; max-width: 520px; margin: 0 auto 20px; font-size: 13.5px; text-align: left; line-height: 1.7; }
+  .receipt { background: var(--cream); border: 1px solid var(--cream-line); border-radius: 12px; padding: 14px 16px; max-width: 520px; margin: 0 auto 20px; font-size: 13.5px; text-align: left; line-height: 1.7; }
 </style>

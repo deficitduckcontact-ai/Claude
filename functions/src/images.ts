@@ -9,7 +9,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
-import { bucket, db, requireCreator, slugArg } from './shared.js';
+import { bucket, db, requireCreator, slugArg, APP_CHECK } from './shared.js';
 
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 const VARIANTS = [
@@ -42,7 +42,7 @@ export async function derive(master: Buffer, area: 'p' | 'premium'): Promise<Sto
   return { base, w: outW || meta.width || 1600, h: outH || meta.height || 1600 };
 }
 
-export const publishEpisode = onCall({ memory: '2GiB', timeoutSeconds: 300, cpu: 2 }, async (req) => {
+export const publishEpisode = onCall({ enforceAppCheck: APP_CHECK, memory: '2GiB', timeoutSeconds: 300, cpu: 2 }, async (req) => {
   const uid = requireCreator(req);
   const { draftId, title, caption = '', premium = false, count, scheduleAt } = req.data ?? {};
   const slug = slugArg(req.data?.slug);

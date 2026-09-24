@@ -9,4 +9,4 @@
 
 <img {src} alt="" width="400" height="400" loading="lazy" style:width={px} style:height={px} style:border-radius="{radius}px" class="cover" />
 
-<style>.cover { object-fit: cover; background: #eee; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(23, 23, 23, 0.06); }</style>
+<style>.cover { object-fit: cover; background: var(--hairline); flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(23, 23, 23, 0.06); }</style>

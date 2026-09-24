@@ -73,18 +73,12 @@ service cloud.firestore {
         allow write: if false; // publishEpisode function
 
         match /comments/{cid} {
-          allow read: if true;
-          allow create: if signedIn()
-            && request.resource.data.keys().hasOnly(['uid', 'handle', 'body', 'createdAt', 'parentId'])
-            && request.resource.data.uid == request.auth.uid
-            // no impersonation: the handle shown must be the author's real handle
-            && request.resource.data.handle == get(/databases/$(db)/documents/users/$(request.auth.uid)).data.handle
-            && request.resource.data.body is string
-            && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 4000
-            && request.resource.data.createdAt == request.time
-            && (!('parentId' in request.resource.data) || str(request.resource.data.parentId, 40));
-          allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isCreatorOf(slug));
-          // TODO(moderation): rate limiting + reports queue → move creates to a callable.
+          // Writes go through the postComment callable (policy, rate limit, spam filter).
+          allow read: if resource.data.status == 'visible'
+            || (signedIn() && resource.data.uid == request.auth.uid)
+            || isCreatorOf(slug) || (signedIn() && request.auth.token.mod == true);
+          allow create, update: if false;
+          allow delete: if signedIn() && resource.data.uid == request.auth.uid;
         }
       }
     }
@@ -97,6 +91,8 @@ service cloud.firestore {
     // Money trail — never client readable except a creator's own payout rows.
     match /ledger/{id}       { allow read: if signedIn() && resource.data.creatorUid == request.auth.uid; allow write: if false; }
     match /stripeEvents/{id} { allow read, write: if false; }
+    match /rateLimits/{uid}  { allow read, write: if false; }
+    match /reports/{id}      { allow read: if signedIn() && request.auth.token.mod == true; allow write: if false; }
     match /waitlist/{id} {
       allow create: if request.resource.data.keys().hasOnly(['email', 'createdAt', 'creator'])
         && request.resource.data.email is string && request.resource.data.email.matches('^[^@\\s]{1,64}@[^@\\s]{1,190}$')

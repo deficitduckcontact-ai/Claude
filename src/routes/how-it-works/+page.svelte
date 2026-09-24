@@ -51,6 +51,6 @@
   .bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; margin: 14px 0 8px; font-size: 12px; font-weight: 700; color: #fff; }
   .bar span { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; overflow: hidden; min-width: 0; }
   .a { background: var(--ok); } .f { background: #9a9a9a; } .p { background: var(--brand); }
-  details { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+  details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
   summary { font-weight: 600; cursor: pointer; } details p { margin: 8px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
 </style>

@@ -19,6 +19,14 @@ export const STRIPE_PRICE_MONTHLY = defineString('STRIPE_PRICE_MONTHLY');
 // Comma-separated origins allowed for Checkout/Portal return URLs.
 export const ALLOWED_ORIGINS = defineString('ALLOWED_ORIGINS', { default: 'http://localhost:5173,http://127.0.0.1:5000' });
 
+// App Check: only requests from the real site (reCAPTCHA Enterprise attests the
+// browser) reach callables. Opt-in via functions/.env ENFORCE_APP_CHECK=true once
+// the site key is set up — enforcing before then would block everyone.
+export const APP_CHECK = process.env.ENFORCE_APP_CHECK === 'true' && process.env.FUNCTIONS_EMULATOR !== 'true';
+
+/** Who may comment. 'supporters' = active subscribers + creators (the launch policy). */
+export const COMMENT_POLICY: 'everyone' | 'supporters' = 'supporters';
+
 let stripeClient: Stripe | null = null;
 export const stripe = () => (stripeClient ??= new Stripe(STRIPE_SECRET_KEY.value()));
 

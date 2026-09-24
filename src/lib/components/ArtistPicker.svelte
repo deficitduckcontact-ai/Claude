@@ -124,18 +124,18 @@
 </div>
 
 <style>
-  .picker { background: #fff; border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - var(--bar) - 40px); }
+  .picker { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - var(--bar) - 40px); }
   .head { padding: 20px 28px 15px; border-bottom: 1px solid var(--line); position: relative; }
   .head h1 { margin: 0; font-size: 24px; line-height: 1.2; letter-spacing: -0.015em; }
   .sub { margin: 7px 0 0; font-family: var(--serif); font-style: italic; font-size: 14.5px; color: var(--ink-3); }
-  .x { position: absolute; top: 18px; right: 18px; width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink-3); cursor: pointer; }
+  .x { position: absolute; top: 18px; right: 18px; width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-3); cursor: pointer; }
   .convert { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
   .pill { border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; min-width: 205px; }
   .pill .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-4); font-weight: 700; }
   .pill .v { font-size: 15px; color: var(--ink-2); font-weight: 600; margin-top: 3px; }
   .pill .n { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
-  .pill.now { background: var(--cream); border-color: #f0e3bc; }
-  .pill.next { background: var(--mint); border-color: #bee8d6; }
+  .pill.now { background: var(--cream); border-color: var(--cream-line); }
+  .pill.next { background: var(--mint); border-color: var(--mint-line); }
   .arrow { align-self: center; color: var(--line-strong); font-size: 20px; }
   .assure { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
   .assure span { font-size: 12.5px; color: var(--ink-3); }
@@ -144,17 +144,17 @@
   .bar { display: flex; align-items: center; gap: 12px; padding: 12px 28px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .slots { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
   .dots { display: flex; gap: 4px; flex-wrap: wrap; max-width: 260px; }
-  .dot { width: 9px; height: 9px; border-radius: 99px; background: #e4e4e4; }
+  .dot { width: 9px; height: 9px; border-radius: 99px; background: var(--line); }
   .dot.on { background: var(--brand); }
   .dot.pop, .tile.just .tick { animation: pop 0.32s cubic-bezier(0.3, 1.5, 0.5, 1); }
   @keyframes pop { 0% { transform: scale(0.72); } 55% { transform: scale(1.2); } 100% { transform: scale(1); } }
-  .mini { height: 32px; border: 1px solid transparent; border-radius: 9px; background: #f5f4f2; font-size: 12.5px; padding: 0 10px; }
+  .mini { height: 32px; border: 1px solid transparent; border-radius: 9px; background: var(--surface-3); font-size: 12.5px; padding: 0 10px; }
   input.mini { width: 180px; }
 
   .body { overflow-y: auto; padding: 4px 28px 22px; min-height: 190px; scrollbar-width: thin; }
   .sec-h h2 { margin: 20px 0 11px; font-size: 14px; color: var(--ink-2); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 9px; }
-  .tile { position: relative; display: flex; flex-direction: column; border: 1px solid #efefef; border-radius: 10px; cursor: pointer; overflow: hidden; transition: 0.16s; animation: tileIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both; animation-delay: calc(var(--i) * 11ms); }
+  .tile { position: relative; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; overflow: hidden; transition: 0.16s; animation: tileIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both; animation-delay: calc(var(--i) * 11ms); }
   @keyframes tileIn { from { opacity: 0; transform: translateY(7px) scale(0.98); } }
   .tile:hover { border-color: var(--line-strong); transform: translateY(-1px); box-shadow: 0 5px 13px rgba(0, 0, 0, 0.06); }
   .tile.sel { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-ring); }
@@ -169,7 +169,7 @@
   .badge { position: absolute; top: 6px; left: 6px; background: rgba(255, 255, 255, 0.93); border-radius: 99px; font-size: 8.5px; font-weight: 700; color: var(--brand); padding: 2px 6px; }
   .info { padding: 7px 8px 8px; }
   .nm { font-size: 11.5px; font-weight: 600; color: var(--ink-2); line-height: 1.18; }
-  .by { font-size: 10px; color: #8e8e8e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+  .by { font-size: 10px; color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
 
   .foot { border-top: 1px solid var(--line); padding: 14px 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: 0 -5px 14px rgba(23, 23, 23, 0.04); }
   .amt { font-size: 18px; font-weight: 700; }
@@ -179,11 +179,11 @@
     .picker { border-radius: 0; box-shadow: none; max-height: none; overflow: visible; }
     .head { padding: 16px; } .head h1 { font-size: 20px; }
     .pill { min-width: 0; flex: 1 1 0; padding: 8px 10px; } .pill .v { font-size: 13px; } .arrow { display: none; }
-    .bar { position: sticky; top: var(--bar); z-index: 4; background: #fff; padding: 9px 16px; gap: 8px; }
+    .bar { position: sticky; top: var(--bar); z-index: 4; background: var(--surface); padding: 9px 16px; gap: 8px; }
     .bar .grow { display: none; } input.mini { flex: 1 1 100%; order: 3; width: auto; } select.mini { margin-left: auto; }
     .body { padding: 0 14px 14px; overflow: visible; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(clamp(64px, 22vw, 100px), 1fr)); gap: 7px; }
-    .foot { position: sticky; bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom)); background: #fff; z-index: 4; flex-wrap: nowrap; padding: 10px 16px; }
+    .foot { position: sticky; bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom)); background: var(--surface); z-index: 4; flex-wrap: nowrap; padding: 10px 16px; }
     .amt { font-size: 15.5px; } .note { font-size: 11.5px; }
   }
   @media (prefers-reduced-motion: reduce) { .tile, .dot.pop, .tile.just .tick { animation: none; } }

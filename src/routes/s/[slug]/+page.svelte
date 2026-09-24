@@ -88,14 +88,14 @@
 {/if}
 
 <style>
-  .sitetable.classic { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; box-shadow: var(--shadow-sm); }
-  .about { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .sitetable.classic { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; box-shadow: var(--shadow-sm); }
+  .about { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
   .about h2 { margin: 0; font-family: var(--classic); font-size: 16px; }
   .about p { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
   .about .tag { font-family: var(--serif); font-style: italic; color: var(--ink-3); }
   .kv { font-size: 12.5px; } .kv span { color: var(--ink-4); margin-right: 6px; } .kv a { color: var(--link); }
   .tags { display: flex; gap: 4px; flex-wrap: wrap; }
-  .mhead { gap: 12px; align-items: center; padding: 14px; background: #fff; border-bottom: 1px solid var(--line); }
+  .mhead { gap: 12px; align-items: center; padding: 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
   .mhead h1 { margin: 0; font-size: 20px; }
   @media (max-width: 899px) { .mob-only.mhead { display: flex; } .sitetable.classic { border-radius: 0; } }
 </style>

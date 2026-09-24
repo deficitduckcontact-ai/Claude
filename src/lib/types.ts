@@ -49,6 +49,7 @@ export interface Comment {
   body: string;
   createdAt: number;
   parentId?: string;
+  status?: 'visible' | 'held' | 'removed';
 }
 
 export interface Account {
@@ -56,6 +57,7 @@ export interface Account {
   handle: string;
   displayName: string;
   email: string;
+  emailVerified: boolean;
   isCreator: boolean;
 }
 

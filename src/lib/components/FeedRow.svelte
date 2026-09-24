@@ -134,12 +134,12 @@
     display: grid; grid-template-columns: 28px 36px 70px minmax(0, 1fr); column-gap: 8px; align-items: start;
     font-family: var(--classic); border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 7px 10px 6px 4px; background: transparent;
   }
-  .post.classic.sel { background: #f5f9ff; box-shadow: inset 3px 0 0 var(--brand); }
-  .post.classic + :global(.post.classic) { border-top: 1px solid #f0f0f0; }
-  .rank { text-align: right; color: #c6c6c6; font-size: 15px; padding-top: 20px; font-family: arial, sans-serif; }
-  .vote { display: flex; flex-direction: column; align-items: center; font-size: 12px; font-weight: 700; color: #c6c6c6; padding-top: 6px; }
+  .post.classic.sel { background: var(--row-sel); box-shadow: inset 3px 0 0 var(--brand); }
+  .post.classic + :global(.post.classic) { border-top: 1px solid var(--hairline); }
+  .rank { text-align: right; color: var(--idle); font-size: 15px; padding-top: 20px; font-family: arial, sans-serif; }
+  .vote { display: flex; flex-direction: column; align-items: center; font-size: 12px; font-weight: 700; color: var(--idle); padding-top: 6px; }
   .vote span { color: var(--ink-4); } .vote span.on { color: var(--heart); }
-  .vote .heart { border: 0; background: none; font-size: 17px; cursor: pointer; color: #c6c6c6; padding: 0; line-height: 1.1; }
+  .vote .heart { border: 0; background: none; font-size: 17px; cursor: pointer; color: var(--idle); padding: 0; line-height: 1.1; }
   .vote .heart:hover { color: var(--heart); }
   .vote .heart.on { color: var(--heart); }
   .thumb { display: block; }
@@ -148,24 +148,24 @@
   .classic .t { font-family: var(--classic); font-weight: 400; font-size: 16px; color: var(--link); }
   .classic.read .t { color: var(--link-read); }
   .classic .t:visited { color: var(--link-read); }
-  .domain { font-size: 10px; color: #888; }
-  .flair { font-size: 10px; background: #fff3c4; border: 1px solid #f0dc8b; color: #7a5a00; border-radius: 2px; padding: 0 4px; }
-  .tagline { margin: 2px 0 0; font-size: 10px; color: #888; display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+  .domain { font-size: 10px; color: var(--meta); }
+  .flair { font-size: 10px; background: var(--flair); border: 1px solid var(--flair-line); color: var(--flair-ink); border-radius: 2px; padding: 0 4px; }
+  .tagline { margin: 2px 0 0; font-size: 10px; color: var(--meta); display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
   .tagline a { color: var(--link); }
-  .tagline .au { color: #369; }
-  .expando { width: 22px; height: 18px; border: 1px solid #c6d4e8; background: #eef4fb; color: #6c8fbf; border-radius: 2px; font-size: 10px; line-height: 1; cursor: pointer; margin-right: 4px; padding: 0; }
+  .tagline .au { color: var(--author); }
+  .expando { width: 22px; height: 18px; border: 1px solid var(--pill-line); background: var(--pill); color: var(--pill-ink); border-radius: 2px; font-size: 10px; line-height: 1; cursor: pointer; margin-right: 4px; padding: 0; }
   .expando:hover { border-color: var(--brand); color: var(--brand); }
-  .expando.open { background: #fff; }
+  .expando.open { background: var(--surface); }
   .buttons { list-style: none; margin: 2px 0 0; padding: 0; display: flex; gap: 8px; font-size: 10px; flex-wrap: wrap; }
-  .buttons a, .buttons button { color: #888; font-weight: 700; background: none; border: 0; padding: 1px 0; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
-  .buttons a:hover, .buttons button:hover { text-decoration: underline; color: #555; }
+  .buttons a, .buttons button { color: var(--meta); font-weight: 700; background: none; border: 0; padding: 1px 0; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+  .buttons a:hover, .buttons button:hover { text-decoration: underline; color: var(--meta-strong); }
   .post.classic .inline { grid-column: 3 / -1; margin: 8px 0 4px; }
 
   @media (max-width: 899px) {
     .post { border-radius: 0; border-left: 0; border-right: 0; margin-bottom: 6px; padding: 12px 14px; box-shadow: none; }
     .post.card .preview { margin-left: -14px; margin-right: -14px; width: calc(100% + 28px); border-radius: 0; }
     .post.card .inline { margin-left: -14px; margin-right: -14px; }
-    .post.classic { grid-template-columns: 0 34px 56px minmax(0, 1fr); padding: 8px 10px 8px 0; background: #fff; margin: 0; }
+    .post.classic { grid-template-columns: 0 34px 56px minmax(0, 1fr); padding: 8px 10px 8px 0; background: var(--surface); margin: 0; }
     .rank { visibility: hidden; }
     .post.classic :global(.cover) { width: 56px !important; height: 56px !important; }
     .post.classic .inline { grid-column: 1 / -1; margin-left: -0px; }

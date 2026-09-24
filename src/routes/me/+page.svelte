@@ -81,7 +81,7 @@
   .me h1 { margin: 0; font-size: 22px; }
   .col { display: flex; flex-direction: column; gap: 6px; }
   .artists { margin-top: 14px; } .artists h3 { margin: 0 0 10px; font-size: 15px; }
-  .cta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--cream); border-color: #f0e3bc; font-size: 14px; }
+  .cta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--cream); border-color: var(--cream-line); font-size: 14px; }
   .pk { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; width: 70px; text-align: center; }
   .tabs { display: flex; gap: 4px; margin: 20px 0 12px; border-bottom: 1px solid var(--line); }
   .tabs button { border: 0; background: none; padding: 8px 12px; font-weight: 600; color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; }

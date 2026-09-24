@@ -112,21 +112,21 @@
   .cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
   @media (max-width: 899px) { .cols { grid-template-columns: 1fr; } }
   .toggle { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; cursor: pointer; }
-  .drop { margin: 14px 0; border: 2px dashed var(--line-strong); border-radius: 12px; padding: 26px; text-align: center; background: #fff; transition: 0.15s; }
+  .drop { margin: 14px 0; border: 2px dashed var(--line-strong); border-radius: 12px; padding: 26px; text-align: center; background: var(--surface); transition: 0.15s; }
   .drop.over { border-color: var(--brand); background: var(--brand-tint); }
   .drop p { margin: 4px 0; }
   .pick { color: var(--brand); font-weight: 600; cursor: pointer; text-decoration: underline; }
   .pick input { display: none; }
   .small { font-size: 12.5px; }
   .items { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px; }
-  .items li { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; cursor: grab; }
+  .items li { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; cursor: grab; }
   .items img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; }
   .n { width: 20px; text-align: center; font-weight: 700; color: var(--ink-4); }
   .fn { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
-  .w { font-size: 12px; color: #9a6400; } .okk { font-size: 12px; color: var(--ok); }
+  .w { font-size: 12px; color: var(--warn-ink); } .okk { font-size: 12px; color: var(--ok); }
   .preview { position: sticky; top: calc(var(--bar) + 16px); }
   .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-4); font-weight: 700; margin-bottom: 8px; }
-  .phone { width: 260px; max-height: 70vh; overflow: auto; border: 8px solid #171717; border-radius: 28px; background: #fff; display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
+  .phone { width: 260px; max-height: 70vh; overflow: auto; border: 8px solid #171717; border-radius: 28px; background: var(--surface); display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
   .phone img { width: 100%; } .phone img.blur { filter: blur(10px) grayscale(0.4); }
   .ph { padding: 80px 20px; text-align: center; font-size: 13px; }
 </style>

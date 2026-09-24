@@ -116,8 +116,8 @@
   .panels { margin: 16px 0 0; }
   .caption { color: var(--ink-3); margin: 12px 0 0; }
   .acts { display: flex; gap: 6px; flex-wrap: wrap; margin: 16px 0; }
-  .liked { color: var(--heart); border-color: #f3b9bb; background: #fff5f5; }
-  .back { display: flex; gap: 14px; align-items: center; padding: 14px 16px; background: var(--cream); border-color: #f0e3bc; font-size: 14px; }
+  .liked { color: var(--heart); border-color: var(--heart-line); background: var(--heart-bg); }
+  .back { display: flex; gap: 14px; align-items: center; padding: 14px 16px; background: var(--cream); border-color: var(--cream-line); font-size: 14px; }
   .back .muted { font-size: 13px; margin-top: 2px; }
   @media (max-width: 899px) {
     .reader { padding: 12px 0 calc(var(--bottom-nav) + 40px); }

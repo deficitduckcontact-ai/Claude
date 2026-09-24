@@ -4,6 +4,7 @@
 // that subscription state is only ever written by Cloud Functions).
 import { LIVE, fb } from './firebase';
 import { SEED_NOW } from './seed';
+import { isDisposableEmail } from '../../functions/src/spam';
 import type { Account, Creator, Density, Series, SortMode, Subscription } from './types';
 
 const KEY = 'tc:session';
@@ -81,9 +82,10 @@ class Session {
     handle = handle.trim().toLowerCase();
     if (!/^[a-z0-9_]{3,24}$/.test(handle)) throw new Error('Handle: 3–24 letters, numbers or _');
     if (password.length < 8) throw new Error('Password must be at least 8 characters');
+    if (isDisposableEmail(email)) throw new Error('Please use a permanent email address');
     if (!LIVE) {
       if (this.#users?.[email]) throw new Error('That email already has an account');
-      const account: Account = { uid: 'demo-' + crypto.randomUUID().slice(0, 8), handle, displayName: handle, email, isCreator: false };
+      const account: Account = { uid: 'demo-' + crypto.randomUUID().slice(0, 8), handle, displayName: handle, email, emailVerified: false, isCreator: false };
       this.#users = { ...this.#users, [email]: { pw: password, account } }; // DEMO ONLY — never store passwords like this for real
       this.account = account;
       return this.save();
@@ -96,6 +98,30 @@ class Session {
     await a.updateProfile(cred.user, { displayName: handle });
     await this.#claimProfile(cred.user.uid, handle);
     await a.sendEmailVerification(cred.user).catch(() => {});
+  }
+
+  /** Re-send the verification email (live) or simulate clicking it (demo). */
+  async verifyEmail() {
+    if (!this.account) return;
+    if (!LIVE) { this.#updateAccount({ emailVerified: true }); return 'Verified (demo).'; }
+    const { auth } = await fb();
+    const a = await import('firebase/auth');
+    await auth.currentUser?.reload();
+    if (auth.currentUser?.emailVerified) {
+      await auth.currentUser.getIdToken(true); // so functions see email_verified=true
+      this.account = { ...this.account, emailVerified: true };
+      return 'Thanks — your email is verified.';
+    }
+    await a.sendEmailVerification(auth.currentUser!);
+    return 'Sent! Check your inbox, click the link, then come back here.';
+  }
+
+  #updateAccount(patch: Partial<Account>) {
+    if (!this.account) return;
+    this.account = { ...this.account, ...patch };
+    const email = this.account.email;
+    if (this.#users?.[email]) this.#users[email].account = this.account;
+    this.save();
   }
 
   async signIn(email: string, password: string) {
@@ -143,12 +169,13 @@ class Session {
   }
 
   /** Demo helper so the creator studio is reachable. Live: creatorOnboard callable sets a custom claim. */
-  setCreator(on: boolean) {
+  setCreator(on: boolean) { this.#updateAccount({ isCreator: on }); }
+
+  /** Demo-mode account deletion (live mode uses the deleteAccount callable). */
+  forgetDemoAccount() {
     if (!this.account) return;
-    this.account = { ...this.account, isCreator: on };
-    const email = this.account.email;
-    if (this.#users?.[email]) this.#users[email].account = this.account;
-    this.save();
+    const { [this.account.email]: _, ...rest } = this.#users ?? {};
+    this.#users = rest;
   }
 
   // ---------------- social ----------------
@@ -219,7 +246,7 @@ class Session {
         }
       }
       this.account = {
-        uid: user.uid, email: user.email ?? '', handle: prof?.handle ?? user.uid.slice(0, 8),
+        uid: user.uid, email: user.email ?? '', emailVerified: user.emailVerified, handle: prof?.handle ?? user.uid.slice(0, 8),
         displayName: prof?.displayName ?? user.displayName ?? '', isCreator: token.claims.creator === true
       };
       const ids = async (c: string) => (await f.getDocs(f.collection(db, 'users', user.uid, c))).docs.map((d) => d.id);

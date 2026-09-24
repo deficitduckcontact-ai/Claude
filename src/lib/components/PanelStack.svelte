@@ -32,7 +32,7 @@
 
 <style>
   .stack { display: flex; flex-direction: column; gap: 6px; }
-  .wall { text-align: center; padding: 22px 18px 24px; background: linear-gradient(var(--cream), #fff); border: 1px solid #f0e3bc; border-radius: 10px; }
+  .wall { text-align: center; padding: 22px 18px 24px; background: linear-gradient(var(--cream), var(--surface)); border: 1px solid var(--cream-line); border-radius: 10px; }
   .wall h3 { margin: 10px 0 4px; font-size: 18px; }
   .wall p { margin: 0 0 14px; font-size: 14px; }
 </style>

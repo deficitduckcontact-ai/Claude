@@ -6,6 +6,10 @@
     <meta name="theme-color" content="#1877F2" />
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+    <script>
+      // Apply the saved theme before first paint (no white flash in night mode).
+      try { var t = localStorage.getItem('tc:theme'); if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t; } catch (e) {}
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

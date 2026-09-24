@@ -33,8 +33,9 @@ describe('split', () => {
     expect(s.perCreator.u1).toBe(s.perSeries.a + s.perSeries.c);
     expect(s.perCreator.__unclaimed__).toBe(s.perSeries.d);
   });
-  it('platform nets about zero on a single $2.49 pick (not for profit floor)', () => {
-    expect(Math.abs(quote(1).platformNetCents)).toBeLessThanOrEqual(2);
+  it('a single $2.49 pick costs the platform ~2¢; two picks turn positive', () => {
+    expect(quote(1).platformNetCents).toBe(-2);
+    expect(quote(2).platformNetCents).toBeGreaterThan(0);
   });
 });
 

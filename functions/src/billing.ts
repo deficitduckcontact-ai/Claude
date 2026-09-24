@@ -1,11 +1,13 @@
 // Reader subscriptions. Stripe is the source of truth; Firestore mirrors it
 // via the webhook. Clients can never write subscriptions/* (see rules).
 import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { createHash } from 'node:crypto';
 import { logger } from 'firebase-functions/v2';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
-import { db, requireUser, safeOrigin, stripe, validPicks, STRIPE_PRICE_MONTHLY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from './shared.js';
-import { split, CURRENCY, type Pick } from './split.js';
+import { db, requireUser, safeOrigin, stripe, validPicks, STRIPE_PRICE_MONTHLY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, APP_CHECK } from './shared.js';
+import { split, CURRENCY, HOLD_DAYS, MIN_PAYOUT_CENTS, type Pick } from './split.js';
 
 const secrets = [STRIPE_SECRET_KEY];
 
@@ -18,7 +20,7 @@ async function customerFor(uid: string, email?: string): Promise<string> {
   return c.id;
 }
 
-export const createCheckout = onCall({ secrets }, async (req) => {
+export const createCheckout = onCall({ enforceAppCheck: APP_CHECK, secrets }, async (req) => {
   const uid = requireUser(req);
   const picks = await validPicks(req.data?.picks);
   const existing = await db.doc(`subscriptions/${uid}`).get();
@@ -48,7 +50,7 @@ export const createCheckout = onCall({ secrets }, async (req) => {
   return { url: session.url };
 });
 
-export const updatePicks = onCall({ secrets }, async (req) => {
+export const updatePicks = onCall({ enforceAppCheck: APP_CHECK, secrets }, async (req) => {
   const uid = requireUser(req);
   const picks = await validPicks(req.data?.picks);
   const ref = db.doc(`subscriptions/${uid}`);
@@ -63,7 +65,7 @@ export const updatePicks = onCall({ secrets }, async (req) => {
   return { ok: true };
 });
 
-export const billingPortal = onCall({ secrets }, async (req) => {
+export const billingPortal = onCall({ enforceAppCheck: APP_CHECK, secrets }, async (req) => {
   const uid = requireUser(req);
   const customer = await customerFor(uid, req.auth!.token.email);
   const s = await stripe().billingPortal.sessions.create({ customer, return_url: `${safeOrigin(req.data?.origin)}/me/billing` });
@@ -138,10 +140,10 @@ async function handle(event: Stripe.Event) {
     case 'charge.refunded':
       return clawBack(event.data.object as Stripe.Charge);
     case 'charge.dispute.created':
-      // TODO(disputes): reverse creator transfers on lost disputes (charge.dispute.closed, status=lost)
-      // and alert an admin. Disputes cost $15 each on top of the amount.
-      logger.warn('dispute opened', (event.data.object as Stripe.Dispute).id);
-      return;
+      logger.warn('dispute opened', (event.data.object as Stripe.Dispute).id); // TODO: email an admin
+      return onDispute(event.data.object as Stripe.Dispute, false);
+    case 'charge.dispute.closed':
+      return onDispute(event.data.object as Stripe.Dispute, true);
     case 'account.updated': {
       const acct = event.data.object as Stripe.Account;
       const uid = acct.metadata?.uid;
@@ -154,10 +156,10 @@ async function handle(event: Stripe.Event) {
 }
 
 /**
- * Split a paid invoice across the reader's picks and transfer each creator's
- * share to their Connect account. Transfers use source_transaction so they
- * draw on this exact charge (no balance juggling) and idempotency keys so a
- * retried webhook can't double-pay.
+ * Split a paid invoice across the reader's picks and record each creator's
+ * share as a PENDING ledger row. Nothing is sent yet: releasePayouts pays rows
+ * after HOLD_DAYS, so refunds and chargebacks that arrive in that window just
+ * cancel pending money instead of clawing it back from creators.
  */
 async function payCreators(inv: Stripe.Invoice) {
   if (!inv.subscription || !inv.amount_paid) return;
@@ -172,59 +174,110 @@ async function payCreators(inv: Stripe.Invoice) {
 
   // Actual Stripe fee from the balance transaction. (Stripe API "acacia": invoice.charge.
   // TODO(stripe-upgrade): on API ≥ 2025-03-31 use invoice payments to find the charge.)
-  const chargeId = (inv as unknown as { charge?: string }).charge;
+  const chargeId = (inv as unknown as { charge?: string }).charge ?? null;
   let fee: number | undefined;
   if (chargeId) {
     const ch = await stripe().charges.retrieve(chargeId, { expand: ['balance_transaction'] });
     fee = (ch.balance_transaction as Stripe.BalanceTransaction | null)?.fee;
   }
   const s = split(inv.amount_paid, splitPicks, fee);
+  const releaseAt = Timestamp.fromMillis(Date.now() + HOLD_DAYS * 864e5);
 
-  const creators = await db.getAll(...Object.keys(s.perCreator).filter((c) => c !== '__unclaimed__').map((c) => db.doc(`creators/${c}`)));
   const batch = db.batch();
-  for (const c of creators) {
-    const amount = s.perCreator[c.id];
-    if (!amount) continue;
-    const dest = c.get('connectAccountId');
-    let transferId: string | null = null;
-    let state = 'owed';
-    if (dest && c.get('payoutsEnabled') && chargeId) {
-      const t = await stripe().transfers.create(
-        { amount, currency: inv.currency ?? CURRENCY, destination: dest, source_transaction: chargeId, transfer_group: inv.id, metadata: { invoice: inv.id!, reader: uid } },
-        { idempotencyKey: `transfer:${inv.id}:${c.id}` }
-      );
-      transferId = t.id; state = 'paid';
-    }
-    // 'owed' rows are settled by a TODO(payouts) job once the creator finishes Connect onboarding.
-    batch.set(db.doc(`ledger/${inv.id}_${c.id}`), {
-      invoiceId: inv.id, readerUid: uid, creatorUid: c.id, amount, currency: inv.currency, state, transferId, at: FieldValue.serverTimestamp()
+  for (const [creatorUid, amount] of Object.entries(s.perCreator)) {
+    if (!amount || creatorUid === '__unclaimed__') continue;
+    batch.set(db.doc(`ledger/${inv.id}_${creatorUid}`), {
+      invoiceId: inv.id, chargeId, readerUid: uid, creatorUid, amount, reversed: 0,
+      currency: inv.currency ?? CURRENCY, state: 'pending', releaseAt, transferId: null, at: FieldValue.serverTimestamp()
     });
   }
   batch.set(db.doc(`ledger/${inv.id}_platform`), {
-    invoiceId: inv.id, readerUid: uid, creatorUid: null, gross: s.grossCents, fee: s.feeCents, platformNet: s.platformNetCents,
-    unclaimed: s.perCreator.__unclaimed__ ?? 0, at: FieldValue.serverTimestamp()
+    invoiceId: inv.id, chargeId, readerUid: uid, creatorUid: null, gross: s.grossCents, fee: s.feeCents, platformNet: s.platformNetCents,
+    unclaimed: s.perCreator.__unclaimed__ ?? 0, state: 'platform', at: FieldValue.serverTimestamp()
   });
   await batch.commit();
 }
 
 /**
- * Refunds: pull back the same fraction of each creator transfer, so a refund
- * doesn't come entirely out of TinyCoup's 15%. Idempotent per refund amount.
+ * Daily: for each creator, add up pending rows past their hold and send ONE
+ * transfer if it's at least MIN_PAYOUT_CENTS and they've finished Stripe
+ * onboarding. Anything smaller or unclaimed just waits for the next run.
+ * One transfer a month instead of one per reader keeps Connect's per-payout
+ * fees down.
  */
+export const releasePayouts = onSchedule({ schedule: 'every day 10:00', timeZone: 'America/Toronto', secrets: [STRIPE_SECRET_KEY] }, async () => {
+  const due = await db.collection('ledger').where('state', '==', 'pending').where('releaseAt', '<=', Timestamp.now()).get();
+  const byCreator = new Map<string, FirebaseFirestore.QueryDocumentSnapshot[]>();
+  for (const d of due.docs) byCreator.set(d.get('creatorUid'), [...(byCreator.get(d.get('creatorUid')) ?? []), d]);
+
+  for (const [creatorUid, rows] of byCreator) {
+    const c = await db.doc(`creators/${creatorUid}`).get();
+    if (!c.get('connectAccountId') || !c.get('payoutsEnabled')) continue; // waits until onboarded
+    const net = rows.reduce((n, r) => n + r.get('amount') - (r.get('reversed') ?? 0), 0);
+    if (net < MIN_PAYOUT_CENTS) continue; // rolls into a later payout
+    const ids = rows.map((r) => r.id).sort();
+    const key = createHash('sha256').update(ids.join(',')).digest('hex').slice(0, 40);
+    const t = await stripe().transfers.create(
+      { amount: net, currency: rows[0].get('currency') ?? CURRENCY, destination: c.get('connectAccountId'), metadata: { creatorUid, rows: String(ids.length) } },
+      { idempotencyKey: `payout:${key}` }
+    );
+    const w = db.batch();
+    for (const r of rows) w.update(r.ref, { state: 'paid', transferId: t.id, paidAt: FieldValue.serverTimestamp() });
+    await w.commit();
+    logger.info('payout', { creatorUid, net, transfer: t.id });
+  }
+});
+
+async function invoiceOfCharge(chargeId: string): Promise<string | null> {
+  const ch = await stripe().charges.retrieve(chargeId);
+  return (ch as unknown as { invoice?: string }).invoice ?? null;
+}
+
+/**
+ * Take back `fraction` (0..1) of each creator's share of an invoice.
+ * Pending rows are simply reduced; already-paid rows get a transfer reversal
+ * for the difference. Idempotent: `reversed` records how much is already back.
+ */
+async function reclaim(invoiceId: string, fraction: number) {
+  const rows = await db.collection('ledger').where('invoiceId', '==', invoiceId).get();
+  for (const row of rows.docs) {
+    if (!row.get('creatorUid')) continue;
+    const target = Math.min(row.get('amount'), Math.round(row.get('amount') * fraction));
+    const already = row.get('reversed') ?? 0;
+    if (target <= already) continue;
+    if (row.get('state') === 'paid' && row.get('transferId')) {
+      await stripe().transfers.createReversal(row.get('transferId'), { amount: target - already, metadata: { ledger: row.id } },
+        { idempotencyKey: `reverse:${row.id}:${target}` });
+    }
+    await row.ref.update({ reversed: target });
+  }
+}
+
+/** Refunds: creators give back the same fraction TinyCoup refunds. */
 async function clawBack(ch: Stripe.Charge) {
   const invoiceId = (ch as unknown as { invoice?: string }).invoice;
   if (!invoiceId || !ch.amount_refunded) return;
-  const fraction = ch.amount_refunded / ch.amount;
-  const rows = await db.collection('ledger').where('invoiceId', '==', invoiceId).where('state', '==', 'paid').get();
-  for (const row of rows.docs) {
-    const target = Math.round(row.get('amount') * fraction);
-    const already = row.get('reversed') ?? 0;
-    if (target <= already || !row.get('transferId')) continue;
-    await stripe().transfers.createReversal(row.get('transferId'), { amount: target - already },
-      { idempotencyKey: `reverse:${row.id}:${target}` });
-    await row.ref.update({ reversed: target });
+  await reclaim(invoiceId, ch.amount_refunded / ch.amount);
+}
+
+/**
+ * Chargebacks: freeze pending money while the bank decides. Lost → treat as a
+ * full refund. Won → release back to pending. (The $15 dispute fee stays with
+ * TinyCoup either way.)
+ */
+async function onDispute(d: Stripe.Dispute, closed: boolean) {
+  const invoiceId = await invoiceOfCharge(typeof d.charge === 'string' ? d.charge : d.charge.id);
+  if (!invoiceId) return;
+  const rows = await db.collection('ledger').where('invoiceId', '==', invoiceId).get();
+  const creatorRows = rows.docs.filter((r) => r.get('creatorUid'));
+  if (!closed) {
+    for (const r of creatorRows) if (r.get('state') === 'pending') await r.ref.update({ state: 'frozen' });
+    return;
   }
-  // 'owed' rows for creators not yet onboarded: just reduce what's owed.
-  const owed = await db.collection('ledger').where('invoiceId', '==', invoiceId).where('state', '==', 'owed').get();
-  for (const row of owed.docs) await row.ref.update({ reversed: Math.round(row.get('amount') * fraction) });
+  if (d.status === 'lost') {
+    await reclaim(invoiceId, 1);
+    for (const r of creatorRows) if (r.get('state') === 'frozen') await r.ref.update({ state: 'void' });
+  } else {
+    for (const r of creatorRows) if (r.get('state') === 'frozen') await r.ref.update({ state: 'pending' });
+  }
 }

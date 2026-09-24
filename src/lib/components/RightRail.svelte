@@ -58,18 +58,18 @@
   </div>
 
   <footer class="faint">
-    <a href="/how-it-works">about</a> · <a href="/creators">creators</a> · <a href="/legal/terms">terms</a> · <a href="/legal/privacy">privacy</a>
+    <a href="/how-it-works">about</a> · <a href="/creators">creators</a> · <a href="/legal/rules">rules</a> · <a href="/legal/terms">terms</a> · <a href="/legal/privacy">privacy</a> · <a href="/legal/copyright">copyright</a> · <a href="/legal/refunds">refunds</a>
     <br />TinyCoup (working name) © 2026 · keyboard: <kbd>?</kbd>
   </footer>
 </aside>
 
 <style>
   .side { display: flex; flex-direction: column; gap: 12px; }
-  .submit { display: flex; flex-direction: column; align-items: center; padding: 10px; border-radius: 6px; background: linear-gradient(#fff, #eef4fb); border: 1px solid #c4d6ec; text-decoration: none !important; color: var(--ink); box-shadow: var(--shadow-sm); }
+  .submit { display: flex; flex-direction: column; align-items: center; padding: 10px; border-radius: 6px; background: linear-gradient(var(--surface), var(--pill)); border: 1px solid var(--pill-line); text-decoration: none !important; color: var(--ink); box-shadow: var(--shadow-sm); }
   .submit:hover { border-color: var(--brand); }
   .submit span { font-family: var(--classic); font-weight: 700; font-size: 15px; }
   .submit small { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
-  .box { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
   .box h4 { font-family: var(--classic); font-size: 11px; text-transform: lowercase; color: var(--ink-4); margin: 0 0 8px; font-weight: 700; letter-spacing: 0.02em; }
   .plan { background: var(--brand-tint); border-color: var(--header-line); }
   .v { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
@@ -83,5 +83,5 @@
   .rules ol { margin: 0 0 6px; padding-left: 18px; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); }
   .rules a { font-size: 12px; color: var(--link); }
   footer { font-size: 11px; line-height: 1.7; padding: 0 4px; font-family: var(--classic); }
-  kbd { background: #fff; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+  kbd { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
 </style>

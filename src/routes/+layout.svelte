@@ -3,10 +3,12 @@
   import { onMount } from 'svelte';
   import TopBar from '$lib/components/TopBar.svelte';
   import BottomNav from '$lib/components/BottomNav.svelte';
+  import VerifyBanner from '$lib/components/VerifyBanner.svelte';
   import { session } from '$lib/session.svelte';
+  import { theme } from '$lib/theme.svelte';
 
   let { children } = $props();
-  onMount(() => session.init());
+  onMount(() => { session.init(); theme.init(); });
 </script>
 
 <svelte:head>
@@ -17,5 +19,6 @@
 
 <a class="sr-only" href="#main">Skip to content</a>
 <TopBar />
+<VerifyBanner />
 <main id="main">{@render children()}</main>
 <BottomNav />

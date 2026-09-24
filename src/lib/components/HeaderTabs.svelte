@@ -32,12 +32,12 @@
   .icon { align-self: center; display: flex; }
   .title { font-family: var(--classic); font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.02em; padding-bottom: 7px; color: var(--ink); }
   .tabs { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
-  .tabs a, .tabs button { display: block; font-family: var(--classic); font-size: 12px; font-weight: 700; padding: 3px 9px 4px; border: 1px solid transparent; border-bottom: 0; border-radius: 3px 3px 0 0; background: #eff7ff; color: var(--link); text-decoration: none; cursor: pointer; margin-bottom: -1px; }
+  .tabs a, .tabs button { display: block; font-family: var(--classic); font-size: 12px; font-weight: 700; padding: 3px 9px 4px; border: 1px solid transparent; border-bottom: 0; border-radius: 3px 3px 0 0; background: var(--tab-idle); color: var(--link); text-decoration: none; cursor: pointer; margin-bottom: -1px; }
   .tabs a:hover, .tabs button:hover { text-decoration: underline; }
-  .tabs .on { background: #fff; color: var(--brand); border-color: var(--header-line); padding-bottom: 5px; }
+  .tabs .on { background: var(--surface); color: var(--brand); border-color: var(--header-line); padding-bottom: 5px; }
   .in > :global(.right) { align-self: center; }
   @media (max-width: 899px) {
-    .ht { position: sticky; top: var(--bar); z-index: 5; background: #fff; border-bottom-color: var(--line); }
+    .ht { position: sticky; top: var(--bar); z-index: 5; background: var(--surface); border-bottom-color: var(--line); }
     .title, .icon { display: none; }
     .in { padding: 0 8px; align-items: stretch; }
     .in > .grow { display: none; }

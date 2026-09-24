@@ -6,6 +6,7 @@
   import { session } from '$lib/session.svelte';
   import { avatarArt } from '$lib/art';
   import { LIVE } from '$lib/firebase';
+  import { theme } from '$lib/theme.svelte';
 
   let q = $state('');
   let menu = $state(false);
@@ -41,14 +42,17 @@
         <span class="sep">|</span><a href="/me/plan">{session.subscribed ? 'my artists' : 'subscribe'}</a>
         <span class="sep">|</span><a href="/studio">{session.isCreator ? 'studio' : 'create'}</a>
         <span class="sep">|</span><a href="/me/settings">preferences</a>
+        <span class="sep">|</span><button onclick={() => theme.toggle()}>{theme.effective === 'dark' ? 'day mode' : 'night mode'}</button>
         <span class="sep">|</span><button onclick={() => { session.signOut(); goto('/'); }}>logout</button>
       {:else}
         <span class="faint">Want to join?</span> <a href={loginHref}>Log in</a> <span class="faint">or</span> <a href="/signup">sign up</a> <span class="faint">in seconds.</span>
+        <span class="sep">|</span><button onclick={() => theme.toggle()} aria-label="Toggle night mode">{theme.effective === 'dark' ? '☀' : '☾'}</button>
       {/if}
     </div>
 
     <!-- phone: compact -->
     <div class="mob-only">
+      <button class="moon" onclick={() => theme.toggle()} aria-label="Toggle night mode">{theme.effective === 'dark' ? '☀' : '☾'}</button>
       {#if session.account}
         <div class="me">
           <button class="avatar" onclick={(e) => { e.stopPropagation(); menu = !menu; }} aria-haspopup="menu" aria-expanded={menu} aria-label="Account menu">
@@ -80,7 +84,7 @@
   .links a { padding: 4px 8px; color: var(--link); text-decoration: none; border-radius: 4px; }
   .links a:hover { text-decoration: underline; }
   .links a.on { font-weight: 700; color: var(--ink); }
-  .search { display: flex; align-items: center; gap: 8px; width: 320px; max-width: 28vw; height: 34px; border: 1px solid var(--header-line); border-radius: 999px; padding: 0 12px; background: #fff; }
+  .search { display: flex; align-items: center; gap: 8px; width: 320px; max-width: 28vw; height: 34px; border: 1px solid var(--header-line); border-radius: 999px; padding: 0 12px; background: var(--surface); }
   .search input { border: 0; outline: 0; background: transparent; flex: 1; font-size: 13.5px; min-width: 0; }
   .search:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
   .acct { font-family: var(--classic); font-size: 11px; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -88,12 +92,13 @@
   .acct a:hover, .acct button:hover { text-decoration: underline; }
   .acct .who { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; color: var(--ink-2); }
   .acct .who img { border-radius: 99px; }
-  .sep { color: #9cb8dc; }
+  .sep { color: var(--header-sep); }
   .me { position: relative; }
+  .moon { border: 0; background: none; font-size: 18px; color: var(--ink-3); cursor: pointer; padding: 4px 6px; }
   .avatar { border: 0; background: none; padding: 0; cursor: pointer; }
   .avatar img { border-radius: 99px; }
   .menu { position: absolute; right: 0; top: 42px; width: 220px; padding: 6px; display: flex; flex-direction: column; box-shadow: var(--shadow); }
   .menu a, .menu button { padding: 10px; border-radius: 6px; font-size: 14.5px; text-decoration: none; background: none; border: 0; text-align: left; cursor: pointer; color: var(--ink-2); }
   .menu a:hover, .menu button:hover { background: var(--page); }
-  @media (max-width: 899px) { .bar { background: #fff; border-bottom-color: var(--line); } .in { gap: 8px; } .mob-only { display: flex; align-items: center; gap: 6px; } }
+  @media (max-width: 899px) { .bar { background: var(--surface); border-bottom-color: var(--line); } .in { gap: 8px; } .mob-only { display: flex; align-items: center; gap: 6px; } }
 </style>

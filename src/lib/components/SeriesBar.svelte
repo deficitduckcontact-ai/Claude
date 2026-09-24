@@ -37,17 +37,17 @@
 </nav>
 
 <style>
-  .sb { height: 20px; background: #f0f0f0; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; gap: 4px; padding: 0 8px; font-family: var(--classic); font-size: 10px; text-transform: uppercase; color: #888; white-space: nowrap; position: relative; z-index: 31; }
-  a, button { color: #555; text-decoration: none; background: none; border: 0; padding: 0; font: inherit; text-transform: inherit; cursor: pointer; }
-  a:hover, button:hover { text-decoration: underline; color: #000; }
-  .sep { color: #bbb; margin: 0 3px; }
-  .dash { color: #bbb; margin: 0 4px; }
+  .sb { height: 20px; background: var(--hairline); border-bottom: 1px solid var(--strip-line); display: flex; align-items: center; gap: 4px; padding: 0 8px; font-family: var(--classic); font-size: 10px; text-transform: uppercase; color: var(--meta); white-space: nowrap; position: relative; z-index: 31; }
+  a, button { color: var(--meta-strong); text-decoration: none; background: none; border: 0; padding: 0; font: inherit; text-transform: inherit; cursor: pointer; }
+  a:hover, button:hover { text-decoration: underline; color: var(--ink); }
+  .sep { color: var(--idle); margin: 0 3px; }
+  .dash { color: var(--idle); margin: 0 4px; }
   .list { overflow: hidden; flex: 1; min-width: 0; text-overflow: ellipsis; }
   .more { font-weight: 700; margin-left: 6px; }
   .dd { position: relative; }
   .dd > button { font-weight: 700; }
-  .menu { position: absolute; top: 16px; left: -8px; background: #fff; border: 1px solid #c4c4c4; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; padding: 4px 0; min-width: 170px; text-transform: none; font-size: 12px; }
+  .menu { position: absolute; top: 16px; left: -8px; background: var(--surface); border: 1px solid var(--line-strong); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; padding: 4px 0; min-width: 170px; text-transform: none; font-size: 12px; }
   .menu a, .menu span { padding: 3px 10px; }
   .menu a:hover { background: var(--brand-tint); text-decoration: none; }
-  .edit { border-top: 1px solid #eee; margin-top: 3px; font-size: 11px; }
+  .edit { border-top: 1px solid var(--hairline); margin-top: 3px; font-size: 11px; }
 </style>

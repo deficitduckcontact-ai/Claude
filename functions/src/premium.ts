@@ -1,9 +1,9 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { bucket, db, episodeArg, requireUser, slugArg } from './shared.js';
+import { bucket, db, episodeArg, requireUser, slugArg, APP_CHECK } from './shared.js';
 import type { StoredPanel } from './images.js';
 
 // Any active subscription unlocks every premium episode (picks only route money).
-export const premiumPanels = onCall(async (req) => {
+export const premiumPanels = onCall({ enforceAppCheck: APP_CHECK }, async (req) => {
   const uid = requireUser(req);
   const slug = slugArg(req.data?.slug);
   const id = episodeArg(req.data?.id);

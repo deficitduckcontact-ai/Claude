@@ -33,7 +33,7 @@
 
 <style>
   .wrap { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
-  .ok { background: var(--mint); border-color: #bee8d6; margin-bottom: 12px; color: #0f5e3e; font-weight: 600; }
+  .ok { background: var(--mint); border-color: var(--mint-line); margin-bottom: 12px; color: var(--ok); font-weight: 600; }
   .fine { text-align: center; font-size: 12.5px; } .fine a { color: var(--brand); }
   @media (max-width: 899px) { .wrap { margin: 0; padding: 0 0 calc(var(--bottom-nav) + 20px); } }
 </style>

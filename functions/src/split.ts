@@ -12,8 +12,14 @@
 export const PER_ARTIST_CENTS = 249;
 export const CURRENCY = 'usd';
 export const CREATOR_SHARE = 0.85;
-export const STRIPE_PCT = 0.029;
+export const STRIPE_PCT = 0.029; // card processing, domestic US card
 export const STRIPE_FIXED_CENTS = 30;
+export const STRIPE_BILLING_PCT = 0.007; // Stripe Billing (subscriptions) on top of processing
+export const INTL_CARD_PCT = 0.015; // extra for non-US cards (estimate; check stripe.com/pricing)
+/** Creator earnings are held this long before transfer, so refunds/chargebacks land first. */
+export const HOLD_DAYS = 30;
+/** Don't send payouts smaller than this — Connect charges per payout and per active account. */
+export const MIN_PAYOUT_CENTS = 1000;
 export const MAX_PICKS = 40;
 
 export interface Pick {
@@ -30,8 +36,8 @@ export interface Split {
   perCreator: Record<string, number>;
 }
 
-export const estimateStripeFee = (grossCents: number) =>
-  grossCents <= 0 ? 0 : Math.round(grossCents * STRIPE_PCT) + STRIPE_FIXED_CENTS;
+export const estimateStripeFee = (grossCents: number, international = false) =>
+  grossCents <= 0 ? 0 : Math.round(grossCents * (STRIPE_PCT + STRIPE_BILLING_PCT + (international ? INTL_CARD_PCT : 0))) + STRIPE_FIXED_CENTS;
 
 /** Divide `total` into `n` integer parts that differ by at most 1 cent (earlier parts get the extra). */
 export function evenly(total: number, n: number): number[] {

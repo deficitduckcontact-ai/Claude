@@ -11,12 +11,21 @@
   let handle = $state('');
   let err = $state('');
   let busy = $state(false);
+  let adult = $state(false);
+  let website = $state(''); // honeypot: invisible to people, bots fill every field
+  const shownAt = Date.now();
 
   const next = () => safeNext(new URLSearchParams(location.search).get('next'));
   $effect(() => { if (session.ready && session.account) goto(next(), { replaceState: true }); });
 
   async function submit(e: SubmitEvent) {
-    e.preventDefault(); err = ''; busy = true;
+    e.preventDefault(); err = '';
+    if (mode === 'signup') {
+      // Cheap bot filters. Real protection is App Check + the screenSignup blocking function.
+      if (website || Date.now() - shownAt < 2500) { err = 'Something went wrong — please try again.'; return; }
+      if (!adult) { err = 'You must be 13 or older to make an account.'; return; }
+    }
+    busy = true;
     try {
       if (mode === 'signup') await session.signUp(email, password, handle);
       else await session.signIn(email, password);
@@ -47,7 +56,13 @@
       <div class="field"><label for="h">Handle</label><input id="h" class="input" bind:value={handle} autocomplete="username" placeholder="dinofan" required /></div>
     {/if}
     <div class="field"><label for="e">Email</label><input id="e" class="input" type="email" bind:value={email} autocomplete="email" required /></div>
+    {#if mode === 'signup'}
+      <div class="hp" aria-hidden="true"><label for="w">Website</label><input id="w" tabindex="-1" autocomplete="off" bind:value={website} /></div>
+    {/if}
     <div class="field"><label for="p">Password</label><input id="p" class="input" type="password" bind:value={password} autocomplete={mode === 'signup' ? 'new-password' : 'current-password'} minlength="8" required /></div>
+    {#if mode === 'signup'}
+      <label class="check"><input type="checkbox" bind:checked={adult} /> <span>I'm 13 or older and agree to the <a href="/legal/terms" target="_blank">Terms</a>, <a href="/legal/rules" target="_blank">Community Rules</a> and <a href="/legal/privacy" target="_blank">Privacy Policy</a>.</span></label>
+    {/if}
     {#if err}<div class="error">{err}</div>{/if}
     <button class="btn primary big block" disabled={busy}>{busy ? '…' : mode === 'signup' ? 'Create account' : 'Log in'}</button>
   </form>
@@ -56,7 +71,7 @@
     {#if mode === 'signup'}Already have an account? <a href="/login{typeof location !== 'undefined' ? location.search : ''}">Log in</a>
     {:else}New here? <a href="/signup{typeof location !== 'undefined' ? location.search : ''}">Make an account</a> · <a href="/reset">Forgot password</a>{/if}
   </p>
-  {#if mode === 'signup'}<p class="fine faint">By signing up you agree to the <a href="/legal/terms">Terms</a> and <a href="/legal/privacy">Privacy Policy</a>.</p>{/if}
+  {#if mode === 'signup'}<p class="fine faint">We'll email you a link to verify your address. We never send marketing email without asking.</p>{/if}
   {#if !LIVE}<div class="todo-box"><b>Demo mode:</b> accounts are stored in this browser only. Add Firebase config (.env) for real auth, email verification and Google sign-in.</div>{/if}
 </div>
 
@@ -68,9 +83,12 @@
   .google { gap: 10px; }
   .or { text-align: center; margin: 14px 0; position: relative; color: var(--ink-4); font-size: 12px; }
   .or::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
-  .or span { background: #fff; padding: 0 10px; position: relative; }
+  .or span { background: var(--surface); padding: 0 10px; position: relative; }
   .alt { font-size: 13.5px; text-align: center; margin: 16px 0 6px; }
-  .alt a, .fine a { color: var(--brand); font-weight: 600; }
+  .alt a { color: var(--brand); font-weight: 600; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .check { display: flex; gap: 8px; font-size: 13px; line-height: 1.45; margin: 4px 0 12px; color: var(--ink-2); }
+  .check a { color: var(--link); }
   .fine { font-size: 12px; text-align: center; margin: 0 0 12px; }
   @media (max-width: 520px) { .auth { margin: 0; border-radius: 0; border: 0; box-shadow: none; } }
 </style>

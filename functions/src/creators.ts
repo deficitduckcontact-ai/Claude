@@ -1,11 +1,11 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
-import { auth, db, requireCreator, requireUser, safeOrigin, stripe, SLUG_RE, STRIPE_SECRET_KEY } from './shared.js';
+import { auth, db, requireCreator, requireUser, safeOrigin, stripe, SLUG_RE, STRIPE_SECRET_KEY, APP_CHECK } from './shared.js';
 
 const RESERVED = new Set(['new', 'edit', 'admin', 'api', 'studio', 'me', 'search', 'series', 'subscribe', 'tinycoup', 'settings', 'login', 'signup']);
 
 /** Become a creator: Stripe Connect Express account + `creator` custom claim, then onboarding link. */
-export const creatorOnboard = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (req) => {
+export const creatorOnboard = onCall({ enforceAppCheck: APP_CHECK, secrets: [STRIPE_SECRET_KEY] }, async (req) => {
   const uid = requireUser(req);
   const ref = db.doc(`creators/${uid}`);
   let accountId: string | undefined = (await ref.get()).get('connectAccountId');
@@ -33,7 +33,7 @@ export const creatorOnboard = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
   return { url: link.url };
 });
 
-export const createSeries = onCall(async (req) => {
+export const createSeries = onCall({ enforceAppCheck: APP_CHECK }, async (req) => {
   const uid = requireCreator(req);
   const { title, tagline = '', about = '', tags = [] } = req.data ?? {};
   if (typeof title !== 'string' || title.trim().length < 2 || title.length > 60) throw new HttpsError('invalid-argument', 'Title must be 2–60 characters');

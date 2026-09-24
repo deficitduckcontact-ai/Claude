@@ -29,7 +29,7 @@
 </div>
 
 <style>
-  .panel { width: 100%; background: #f4f2ed; overflow: hidden; position: relative; }
+  .panel { width: 100%; background: var(--panel-bg); overflow: hidden; position: relative; }
   .panel img { width: 100%; height: 100%; object-fit: cover; }
-  .locked { position: absolute; inset: 0; background: repeating-linear-gradient(135deg, #efe9da 0 14px, #f6f1e4 14px 28px); }
+  .locked { position: absolute; inset: 0; background: repeating-linear-gradient(135deg, var(--panel-stripe) 0 14px, var(--panel-bg) 14px 28px); }
 </style>

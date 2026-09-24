@@ -4,6 +4,7 @@ import { LIVE, call, fb } from './firebase';
 import { saveLocal, allSeries } from './data';
 import { session } from './session.svelte';
 import { SEED_NOW } from './seed';
+import { checkComment, rateLimit, type RateState } from '../../functions/src/spam';
 import type { Comment, Episode, PanelSrc, Series } from './types';
 
 const demoWait = (ms = 600) => new Promise((r) => setTimeout(r, ms));
@@ -131,10 +132,19 @@ export async function listComments(slug: string, id: string): Promise<Comment[]>
   if (LIVE) {
     const { db } = await fb();
     const f = await import('firebase/firestore');
-    const snap = await f.getDocs(f.query(f.collection(db, 'series', slug, 'episodes', id, 'comments'), f.orderBy('createdAt', 'asc'), f.limit(200)));
+    // Held (spam-filtered / reported) comments are only visible to their author, the creator and mods.
+    const snap = await f.getDocs(f.query(f.collection(db, 'series', slug, 'episodes', id, 'comments'), f.where('status', '==', 'visible'), f.orderBy('createdAt', 'asc'), f.limit(200)));
     return snap.docs.map((d) => ({ id: d.id, uid: d.data().uid, handle: d.data().handle, body: d.data().body, parentId: d.data().parentId, createdAt: d.data().createdAt?.toMillis?.() ?? Date.now() }));
   }
   try { return JSON.parse(localStorage.getItem(CKEY(slug, id)) ?? '[]'); } catch { return []; }
+}
+
+/** Who may comment: verified email + (active subscriber or creator). Mirrors functions/src/community.ts. */
+export function commentGate(): { ok: true } | { ok: false; reason: 'login' | 'verify' | 'support' } {
+  if (!session.account) return { ok: false, reason: 'login' };
+  if (!session.account.emailVerified) return { ok: false, reason: 'verify' };
+  if (!session.subscribed && !session.isCreator) return { ok: false, reason: 'support' };
+  return { ok: true };
 }
 
 export async function postComment(slug: string, id: string, body: string, parentId?: string): Promise<Comment> {
@@ -143,15 +153,38 @@ export async function postComment(slug: string, id: string, body: string, parent
   body = body.trim();
   if (!body) throw new Error('Say something first');
   if (LIVE) {
-    const { db } = await fb();
-    const f = await import('firebase/firestore');
-    const data = { uid: a.uid, handle: a.handle, body, createdAt: f.serverTimestamp(), ...(parentId ? { parentId } : {}) };
-    const ref = await f.addDoc(f.collection(db, 'series', slug, 'episodes', id, 'comments'), data);
-    return { id: ref.id, uid: a.uid, handle: a.handle, body, parentId, createdAt: Date.now() };
+    const r = await call<{ id: string; status: 'visible' | 'held' }>('postComment', { slug, id, body, parentId: parentId ?? null });
+    return { id: r.id, uid: a.uid, handle: a.handle, body, parentId, status: r.status, createdAt: Date.now() };
   }
-  const c: Comment = { id: crypto.randomUUID().slice(0, 12), uid: a.uid, handle: a.handle, body, parentId, createdAt: Date.now() };
-  localStorage.setItem(CKEY(slug, id), JSON.stringify([...(await listComments(slug, id)), c]));
+  // DEMO: same policy, spam filter and rate limit as the server.
+  const gate = commentGate();
+  if (!gate.ok) throw new Error(gate.reason === 'verify' ? 'Verify your email to comment' : 'Comments are for supporters — back an artist to join in');
+  const existing = await listComments(slug, id);
+  const mine = existing.filter((c) => c.uid === a.uid).reverse().map((c) => c.body);
+  const verdict = checkComment({ body, accountAgeMs: 0, recentBodies: mine });
+  if (verdict.action === 'reject') throw new Error(verdict.reasons[0] === 'duplicate' ? 'You already posted that' : 'That comment can’t be posted');
+  const rl = rateLimit(JSON.parse(localStorage.getItem('tc:rl') ?? 'null') as RateState | undefined, Date.now());
+  if (!rl.ok) throw new Error('Slow down a little — try again in a minute');
+  localStorage.setItem('tc:rl', JSON.stringify(rl.next));
+  const c: Comment = { id: crypto.randomUUID().replace(/-/g, '').slice(0, 20), uid: a.uid, handle: a.handle, body, parentId, createdAt: Date.now(), status: verdict.action === 'hold' ? 'held' : 'visible' };
+  localStorage.setItem(CKEY(slug, id), JSON.stringify([...existing, c]));
   return c;
+}
+
+export const REPORT_REASONS = { spam: 'Spam', harassment: 'Harassment or bullying', hate: 'Hate', sexual: 'Sexual content', violence: 'Violence or threats', copyright: 'Copyright', other: 'Something else' } as const;
+
+export async function reportComment(slug: string, id: string, commentId: string, reason: keyof typeof REPORT_REASONS) {
+  if (!session.account) throw new Error('Log in to report');
+  if (LIVE) return void (await call('report', { path: `series/${slug}/episodes/${id}/comments/${commentId}`, reason }));
+  await demoWait(200);
+}
+
+/** Right to erasure. Live: deleteAccount callable. Demo: forget local data. */
+export async function deleteAccount(confirm: string) {
+  if (confirm !== 'DELETE') throw new Error('Type DELETE to confirm');
+  if (LIVE) await call('deleteAccount', { confirm });
+  else session.forgetDemoAccount();
+  await session.signOut();
 }
 
 export async function joinWaitlist(email: string, creator: boolean) {

@@ -30,6 +30,12 @@ export function fb(): Promise<Fb> {
       import('firebase/storage'), import('firebase/functions')
     ]);
     const app = initializeApp(config);
+    // App Check: proves requests come from this site, not a script. Needs a
+    // reCAPTCHA Enterprise site key; functions enforce it when ENFORCE_APP_CHECK=true.
+    if (env.VITE_RECAPTCHA_SITE_KEY && env.VITE_USE_EMULATORS !== 'true') {
+      const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import('firebase/app-check');
+      initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(env.VITE_RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
+    }
     const out: Fb = {
       app,
       auth: a.getAuth(app),

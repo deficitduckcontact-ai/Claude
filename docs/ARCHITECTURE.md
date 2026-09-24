@@ -37,7 +37,7 @@ reader picks N series ──► Stripe Checkout: price $2.49 × quantity N (one 
 - `src/lib/pricing.ts` is the only place the maths lives. `functions/src/split.ts` is a copy, and a test fails if they drift.
 - Changing picks = changing subscription **quantity** (Stripe prorates). Picks are stored in `subscriptions/{uid}` and read when each invoice is paid.
 - On a single $2.49 pick TinyCoup nets ~$0.00 after the card fee. That's intentional (not for profit). Bundles fund the infrastructure.
-- Creators who haven't finished Connect onboarding accrue `state: 'owed'` ledger rows (TODO: settle job).
+- **Creator earnings are held 30 days.** `invoice.paid` writes `pending` ledger rows with `releaseAt = +30d`. The daily `releasePayouts` job sends one transfer per creator once their due balance is ≥ $10 and they've finished onboarding. Refunds reduce pending rows (or reverse paid transfers). Disputes freeze rows; a lost dispute voids them, a won one releases them.
 
 ## Images (1600 retina, done right)
 
@@ -84,18 +84,30 @@ Counters (likes, followers, comments) are incremented by Firestore triggers, nev
 - **Open redirects.** `?next=` goes through `safeNext` (tested).
 - **Demo mode can't ship by accident.** `npm run deploy` refuses to build without Firebase config unless `VITE_ALLOW_DEMO=true`.
 
-### Known pitfalls, still open
+### Bots, spam and comments
+
+| Layer | What it stops |
+|---|---|
+| Email required + `screenSignup` blocking function | Accounts without email; throwaway inboxes |
+| Sign-up honeypot + minimum fill time | Dumb form-filling bots |
+| App Check (reCAPTCHA Enterprise) on callables | Scripts calling the API directly |
+| Email verification | Commenting from unverified addresses |
+| **Supporters-only comments** (`COMMENT_POLICY`) | Drive-by spam. Every commenter has a card on file |
+| `postComment` callable: 5/min, 60/day | Floods |
+| `spam.ts` filter → `held` | Links from new accounts, scam phrases, contact details, shouting, duplicates |
+| Reports: 3 → auto-hide; `moderate` callable for mods + series creators | Anything that got through |
+
+## Known pitfalls, still open
 
 | Risk | Why it matters | Plan |
 |---|---|---|
-| No App Check / rate limits | Bots can spam sign-ups, comments, likes (and trigger counter functions) | Enable App Check (reCAPTCHA Enterprise) on Firestore/Functions; move comments to a callable with per-user limits |
-| Chargebacks | $15 fee each, and creators were already paid | Handle `charge.dispute.closed` (lost) → reverse transfers; Stripe Radar rules |
+| Likes/follows aren't rate limited | A script with a real account could toggle likes to run up counter-function invocations | App Check enforcement on Firestore covers most of it; add a per-user limit if it shows up |
+| Chargebacks | $15 fee each (TinyCoup pays it) | 30-day hold + freeze/void handles creator money; Stripe Radar rules to stop fraud up front |
 | Sales tax / VAT / GST | Digital subscriptions are taxable in the EU, UK, Canada and many US states; TinyCoup is merchant of record | Stripe Tax, prices tax-inclusive or added at checkout |
 | Cross-border payouts | Stripe Connect can only pay creators in other countries from a **US** platform account | Decide where the business is incorporated before inviting non-US creators |
 | International card fees | +1.5% international card, +1% FX. On a $2.49 pick the platform goes negative | Accept it (not for profit) or set a small FX-aware minimum |
 | Signed URLs need IAM | `getSignedUrl` needs the Functions service account to hold *Service Account Token Creator* | Grant it once in IAM |
-| Moderation / DMCA / age | Anyone who onboards can publish immediately; users under 13 (COPPA) | Report button + review queue, registered DMCA agent, age gate at sign-up |
-| Account deletion (GDPR/CCPA) | Required by law and by app stores | Callable: cancel Stripe sub, delete auth + user docs, anonymise comments |
+| Moderation UI | `moderate` callable exists, but there's no mod-queue page yet | Build `/mod` listing held comments + open reports |
 | `reads` grows forever | Firestore cost per user over years | Cap at ~500 and prune in a scheduled job |
 | Rules untested | A rule typo can open a hole | Add `@firebase/rules-unit-testing` tests against the emulator in CI |
 
