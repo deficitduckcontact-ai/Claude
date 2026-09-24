@@ -1,0 +1,82 @@
+# TinyCoup architecture
+
+## Stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Frontend | SvelteKit 2 + Svelte 5, `adapter-static` | Every series/episode is **prerendered to real HTML**, so pages are indexable and shared links get proper previews. No SSR server: nothing to scale or cold-start. |
+| Hosting | Firebase Hosting | CDN edge; `200.html` fallback serves pages published after the last build (rendered client-side from Firestore). |
+| Data | Firestore | Public reads straight from the client; anything touching money or counters is written only by Functions. |
+| Images | Cloud Storage + `sharp` in Functions | Content-hashed, immutable, cache forever. |
+| Money | Stripe Billing + Checkout + Customer Portal + Connect Express | One subscription per reader; per-invoice transfers to creators. |
+
+The UI lineage is the "changing subscriptions" mockup (`changing-subscriptions.web.app`): same cream/amber/mint/ink tokens, tile picker, dot meter and sticky money footer. Tinyview red became TinyCoup violet `#5B3FE0`.
+
+## Money flow
+
+```
+reader picks N series ──► Stripe Checkout: price $2.49 × quantity N (one charge)
+                                   │
+            invoice.paid webhook ──┤  split(): 85% of gross → creator pool
+                                   │  pool ÷ N picks (± 1¢ fairness), ÷ co-creators
+                                   ├─► transfers.create(source_transaction = charge,
+                                   │     idempotencyKey = invoice:creator)  per creator
+                                   └─► ledger/{invoice}_{creator}  (+ _platform row)
+```
+
+- `src/lib/pricing.ts` is the only place the maths lives. `functions/src/split.ts` is a copy, and a test fails if they drift.
+- Changing picks = changing subscription **quantity** (Stripe prorates). Picks are stored in `subscriptions/{uid}` and read when each invoice is paid.
+- On a single $2.49 pick TinyCoup nets ~$0.00 after the card fee. That's intentional (not for profit). Bundles fund the infrastructure.
+- Creators who haven't finished Connect onboarding accrue `state: 'owed'` ledger rows (TODO: settle job).
+
+## Images (1600 retina, done right)
+
+`publishEpisode` (callable, 2 GiB):
+master → auto-orient → sRGB → strip metadata → **AVIF + WebP @ 1600 and 800**, WebP thumb @ 400 → `p/{sha256}-{w}.{ext}` with `Cache-Control: public, max-age=31536000, immutable`.
+The reader uses `<picture>` with AVIF first, `srcset 800w/1600w`, explicit width/height, `fetchpriority=high` on panel 1, and lazy loading below.
+Premium panels after the free preview go to `premium/` (no public read) and are served by `premiumPanels` as 15-minute signed URLs.
+
+Cost: egress is the whole bill. Once there's a domain, put Cloudflare (or bunny/R2) in front of `p/` and set `VITE_IMAGE_BASE`.
+
+## Data model
+
+```
+users/{uid}                 handle, displayName, avatar       (owner writes)
+  follows/{slug}  likes/{slug__epId}  reads/{…}               (owner writes)
+  private/stripe            customerId                        (functions)
+subscriptions/{uid}         status, picks[], currentPeriodEnd (functions ← Stripe)
+creators/{uid}              connectAccountId, payoutsEnabled  (functions)
+series/{slug}               title, tagline, creatorIds[], followers, episodeCount
+  episodes/{ep-N}           status, number, title, premium, panels[] | preview + panelCount,
+                            likes, comments, views, hot, publishedAt
+    private/panels          premium panel paths               (functions only)
+    comments/{id}           uid, handle, body                 (signed-in create)
+ledger/{invoice_creator}    per-creator payout rows           (functions; creator can read own)
+stripeEvents/{eventId}      webhook idempotency               (functions)
+```
+
+Counters (likes, followers, comments) are incremented by Firestore triggers, never by clients. Hot score is recomputed every 15 minutes.
+
+## Demo mode
+
+`LIVE = Boolean(VITE_FIREBASE_API_KEY && VITE_FIREBASE_PROJECT_ID)`. When false, `session.svelte.ts` and `api.ts` fall back to localStorage for every flow. The same UI and code paths run, only the storage differs. Demo passwords are stored in plain localStorage: **demo only**.
+
+## Launch TODO
+
+Search the code for `TODO(` for the full list. The big ones:
+
+- [ ] **Legal**: Terms, Privacy, refunds, DMCA. Placeholder pages only.
+- [ ] Series covers + avatar upload; co-creator management UI.
+- [ ] Episode edit / unpublish / reorder panels; drafts; scheduled publishing.
+- [ ] Build-time Firestore read so new series/episodes get prerendered HTML (+ rebuild trigger on publish).
+- [ ] Settle `owed` ledger rows after Connect onboarding; creator statements + CSV; Stripe Express dashboard link.
+- [ ] Annual plan price.
+- [ ] Handle uniqueness (`handles/{handle}` doc), Google-sign-in handle picker.
+- [ ] Comment replies, moderation/reporting, rate limits.
+- [ ] View counting (sharded counters), creator analytics (backers count).
+- [ ] Notifications (email on new episode, weekly digest, web push).
+- [ ] Search beyond ~10k episodes (Typesense/Algolia extension).
+- [ ] OG images for link previews (first panel 1600 WebP; branded fallback PNG).
+- [ ] Service worker for the PWA (offline shell, cache recent panels).
+- [ ] Dark theme; accessibility pass; alt text per panel.
+- [ ] Stripe API upgrade path (`invoice.charge` → invoice payments on API ≥ 2025-03-31).
