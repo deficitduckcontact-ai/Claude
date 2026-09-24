@@ -1,14 +1,14 @@
-/* TinyCoup tokens — lineage: the "changing subscriptions" mockup (cream /
-   amber / mint / ink scale), with a violet brand in place of Tinyview red. */
+/* TinyCoup tokens. Lineage: the "changing subscriptions" mockup (cream /
+   amber / mint accents, soft cards, uppercase micro-labels, serif-italic
+   subtitles) + new-reddit layout, with a Facebook-blue brand. */
 :root {
   /* Facebook-style blue brand */
   --brand: #1877f2;
   --brand-dark: #0b5fcc;
   --brand-tint: #e7f3ff;
   --brand-ring: rgba(24, 119, 242, 0.3);
-  /* old-reddit touches: light-blue header, blue links, purple once read */
-  --header: #e7f3ff;
-  --header-line: #b9d5f7;
+  --header: #ffffff;
+  --header-line: #e4e6eb;
   --link: #0a58ca;
   --link-read: #6a4c9c;
   --cream: #fff7dd;
@@ -27,10 +27,10 @@
   --ink-3: #606770;
   --ink-4: #8a8d91;
   --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --classic: verdana, arial, helvetica, sans-serif; /* old reddit */
+  --classic: var(--sans);
   --serif: Georgia, 'Times New Roman', serif;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.22), 0 4px 14px rgba(0, 0, 0, 0.1);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05);
   --surface-3: #f5f4f2;
   --cream-line: #f0e3bc;
   --mint-line: #bee8d6;
@@ -62,8 +62,8 @@
   --todo-line: #e0b64a;
   --todo-ink: #6b4a00;
   color-scheme: light;
-  --r: 8px;
-  --bar: 52px;
+  --r: 12px;
+  --bar: 56px;
   --bottom-nav: 60px;
 }
 /* Night mode (old reddit's RES "night mode", Facebook's dark palette).
@@ -203,7 +203,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---------- buttons (from the mockup, re-branded) ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2);
+  border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2);
   font-size: 14px; font-weight: 500; padding: 7px 14px; cursor: pointer; text-decoration: none !important; white-space: nowrap;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -250,19 +250,25 @@ textarea.input { height: auto; min-height: 90px; padding: 10px 12px; resize: ver
 .shell { max-width: 1360px; margin: 0 auto; padding: 16px 16px 40px; }
 .shell.narrow { max-width: 760px; }
 .shell.mid { max-width: 1040px; }
-.two {
-  /* old reddit: fluid content + fixed right sidebar (no left nav) */
-  display: grid; gap: 20px; align-items: start;
-  grid-template-columns: minmax(0, 1fr) 312px;
+.three {
+  /* new-reddit layout: left nav · feed · right sidebar */
+  display: grid; gap: 24px; align-items: start; justify-content: center;
+  grid-template-columns: 232px minmax(0, 740px) 316px;
 }
-.two > .rail { position: sticky; top: calc(var(--bar) + 12px); max-height: calc(100vh - var(--bar) - 24px); overflow: auto; scrollbar-width: thin; }
-.shell.wide { max-width: 1480px; padding-top: 12px; }
+.two { display: grid; gap: 24px; align-items: start; justify-content: center; grid-template-columns: minmax(0, 740px) 316px; }
+.three > .rail, .two > .rail { position: sticky; top: calc(var(--bar) + 16px); max-height: calc(100vh - var(--bar) - 32px); overflow: auto; scrollbar-width: none; }
+.shell.wide { max-width: 1400px; padding-top: 16px; }
+@media (max-width: 1239px) { .three { grid-template-columns: minmax(0, 740px) 316px; } .three > .rail.left { display: none; } }
 @media (max-width: 899px) {
-  .two { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .two > .rail { display: none; }
+  .three, .two { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .three > .rail, .two > .rail { display: none; }
   .shell { padding: 0 0 calc(var(--bottom-nav) + 24px + env(safe-area-inset-bottom)); }
   .shell.pad-m { padding-left: 14px; padding-right: 14px; padding-top: 14px; }
+  .shell.wide { padding-top: 0; }
 }
+/* mockup micro-label */
+.k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-4); font-weight: 700; }
+.btn.pill { border-radius: 999px; }
 .desk-only { }
 .mob-only { display: none; }
 @media (max-width: 899px) { .desk-only { display: none !important; } .mob-only { display: revert; } }

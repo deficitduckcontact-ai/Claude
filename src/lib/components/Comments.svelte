@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Old-reddit threaded comments: [–] collapse, indentation lines, reply, permalink.
+  // Threaded comments (new-reddit style): avatar, name · time, body, action pills, thread lines.
   import { avatarArt } from '$lib/art';
   import { commentGate, listComments, postComment, reportComment, REPORT_REASONS } from '$lib/api';
   import { session } from '$lib/session.svelte';
@@ -59,29 +59,29 @@
     {@const shut = collapsed.includes(c.id)}
     <div class="c" id="c-{c.id}" class:odd={depth % 2 === 1}>
       <p class="tagline">
-        <button class="exp" onclick={() => toggleCollapse(c.id)} aria-label={shut ? 'Expand' : 'Collapse'}>[{shut ? '+' : '–'}]</button>
-        <img src={avatarArt(c.handle)} alt="" width="16" height="16" />
+        <img src={avatarArt(c.handle)} alt="" width="26" height="26" />
         <a class="au" href="/u/{c.handle}">{c.handle}</a>
-        <span class="faint">{agoText(c.createdAt, session.now)}</span>
-        {#if c.status === 'held'}<span class="held">awaiting review · only you can see this</span>{/if}
-        {#if shut}<span class="faint">({count(c.id) + 1} comment{count(c.id) ? 's' : ''})</span>{/if}
+        <span class="faint">· {agoText(c.createdAt, session.now)}</span>
+        {#if c.status === 'held'}<span class="held">Awaiting review · only you can see this</span>{/if}
+        {#if shut}<span class="faint">· {count(c.id) + 1} hidden</span>{/if}
+        <button class="exp" onclick={() => toggleCollapse(c.id)} aria-label={shut ? 'Expand thread' : 'Collapse thread'}>{shut ? '+' : '−'}</button>
       </p>
       {#if !shut}
         <div class="md">{c.body}</div>
         <ul class="buttons">
-          <li><a href="#c-{c.id}">permalink</a></li>
-          {#if gate.ok && depth < 8}<li><button onclick={() => { replyTo = replyTo === c.id ? null : c.id; replyBody = ''; }}>reply</button></li>{/if}
+          {#if gate.ok && depth < 8}<li><button onclick={() => { replyTo = replyTo === c.id ? null : c.id; replyBody = ''; }}>💬 Reply</button></li>{/if}
+          <li><a href="#c-{c.id}">Link</a></li>
           {#if session.account && c.uid !== session.account.uid}
-            <li>{#if reported.includes(c.id)}<span class="faint">reported — thanks</span>{:else}<button onclick={() => (reporting = reporting === c.id ? null : c.id)}>report</button>{/if}</li>
+            <li>{#if reported.includes(c.id)}<span class="faint">Reported — thanks</span>{:else}<button onclick={() => (reporting = reporting === c.id ? null : c.id)}>Report</button>{/if}</li>
           {/if}
         </ul>
         {#if reporting === c.id}
-          <div class="rep">why? {#each Object.entries(REPORT_REASONS) as [k, label]}<button onclick={() => report(c.id, k as keyof typeof REPORT_REASONS)}>{label}</button>{/each}</div>
+          <div class="rep">Why are you reporting this? {#each Object.entries(REPORT_REASONS) as [k, label]}<button onclick={() => report(c.id, k as keyof typeof REPORT_REASONS)}>{label}</button>{/each}</div>
         {/if}
         {#if replyTo === c.id}
           <form class="reply" onsubmit={(e) => { e.preventDefault(); send(c.id); }}>
             <textarea class="input" bind:value={replyBody} maxlength="4000" placeholder="Reply to {c.handle}…"></textarea>
-            <div class="row"><button class="btn primary small" disabled={busy || !replyBody.trim()}>save</button><button type="button" class="btn small" onclick={() => (replyTo = null)}>cancel</button></div>
+            <div class="row"><button type="button" class="btn small" onclick={() => (replyTo = null)}>Cancel</button><button class="btn primary small" disabled={busy || !replyBody.trim()}>Reply</button></div>
           </form>
         {/if}
         {#if kids.get(c.id)?.length}<div class="child">{@render thread(kids.get(c.id)!, depth + 1)}</div>{/if}
@@ -92,16 +92,16 @@
 
 <section id="comments" class="cm">
   <div class="row head">
-    <h2 class="grow">{items.length ? `all ${items.length} comment${items.length === 1 ? '' : 's'}` : 'comments'}</h2>
-    <label class="faint">sorted by:
-      <select bind:value={sort}><option value="old">old</option><option value="new">new</option><option value="best">most replies</option></select>
+    <h2 class="grow">Comments <span class="faint">{shown.length || ''}</span></h2>
+    <label class="faint">Sort by
+      <select bind:value={sort}><option value="old">Oldest</option><option value="new">Newest</option><option value="best">Most replies</option></select>
     </label>
   </div>
   {#if gate.ok}
     <form onsubmit={(e) => { e.preventDefault(); send(); }}>
-      <textarea class="input" bind:value={body} placeholder="Say something nice…" maxlength="4000"></textarea>
-      <button class="btn primary" disabled={busy || !body.trim()}>save</button>
-      <span class="faint rules">Be kind. <a href="/legal/rules" class="lnk">Community rules</a></span>
+      <textarea class="input" bind:value={body} placeholder="Add a comment…" maxlength="4000"></textarea>
+      <div class="row fr"><span class="faint rules">Be kind. <a href="/legal/rules" class="lnk">Community rules</a></span><span class="grow"></span>
+      <button class="btn primary" disabled={busy || !body.trim()}>Comment</button></div>
     </form>
   {:else if gate.reason === 'login'}
     <p class="gate"><a href="/login?next=/s/{slug}/{id}%23comments" class="lnk">Log in</a> or <a href="/signup" class="lnk">sign up</a> to join the conversation.</p>
@@ -119,32 +119,34 @@
 </section>
 
 <style>
-  .cm { margin-top: 22px; font-family: var(--classic); }
-  .head { border-bottom: 1px dotted var(--line-strong); padding-bottom: 4px; margin-bottom: 10px; }
-  h2 { font-size: 14px; margin: 0; font-weight: 400; text-transform: lowercase; }
-  .head label { font-size: 11px; } .head select { font: inherit; border: 0; background: none; color: var(--link); font-weight: 700; cursor: pointer; }
-  form { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin-bottom: 14px; max-width: 560px; }
-  form textarea { font-family: var(--sans); }
-  .c { margin: 8px 0 0; }
-  .child { margin-left: 14px; padding-left: 10px; border-left: 1px dotted var(--line); }
-  .c.odd > .child { border-left-color: var(--pill-line); }
-  .tagline { margin: 0; font-size: 10.5px; display: flex; align-items: center; gap: 5px; color: var(--meta); }
+  .cm { margin-top: 26px; }
+  .head { padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 18px; margin: 0; }
+  .head label { font-size: 13px; } .head select { font: inherit; border: 0; background: none; color: var(--ink); font-weight: 600; cursor: pointer; }
+  form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+  form:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
+  form textarea { border: 0; box-shadow: none !important; min-height: 70px; background: transparent; }
+  .fr { padding: 0 4px 2px; }
+  .c { margin: 14px 0 0; }
+  .child { margin-left: 12px; padding-left: 18px; border-left: 2px solid var(--line); }
+  .child:hover { border-left-color: var(--line-strong); }
+  .tagline { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 6px; }
   .tagline img { border-radius: 99px; }
-  .exp { border: 0; background: none; font: inherit; color: var(--meta); padding: 0; cursor: pointer; font-family: monospace; }
-  .exp:hover { color: var(--brand); }
-  .au { color: var(--author); font-weight: 700; }
-  .md { font-family: var(--sans); font-size: 14px; margin: 3px 0 2px; white-space: pre-wrap; line-height: 1.45; color: var(--ink); }
-  .buttons { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; font-size: 10px; }
-  .buttons a, .buttons button { color: var(--meta); font: inherit; font-weight: 700; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: none; }
-  .buttons a:hover, .buttons button:hover { text-decoration: underline; }
-  .reply { margin: 6px 0 0; }
-  .lnk { color: var(--link); font-weight: 600; }
-  .gate { font-family: var(--sans); font-size: 13.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; color: var(--ink-2); }
-  .notice { font-family: var(--sans); font-size: 13px; background: var(--cream); border: 1px solid var(--cream-line); border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; color: var(--ink-2); }
-  .held { background: var(--cream); color: var(--ink-3); border-radius: 3px; padding: 0 5px; }
-  .rules { font-size: 11px; }
-  .rep { font-size: 11px; display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; color: var(--ink-4); align-items: center; }
-  .rep button { font: inherit; border: 1px solid var(--line); background: var(--surface); border-radius: 3px; padding: 1px 6px; cursor: pointer; color: var(--ink-2); }
+  .exp { margin-left: auto; width: 22px; height: 22px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-3); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+  .exp:hover { color: var(--brand); border-color: var(--brand); }
+  .au { color: var(--ink); font-weight: 700; }
+  .md { font-size: 14.5px; margin: 4px 0 2px 32px; white-space: pre-wrap; line-height: 1.5; color: var(--ink); }
+  .buttons { list-style: none; margin: 2px 0 0 26px; padding: 0; display: flex; gap: 2px; }
+  .buttons a, .buttons button, .buttons span { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 99px; color: var(--ink-3); font-size: 12.5px; font-weight: 600; background: none; border: 0; cursor: pointer; text-decoration: none !important; }
+  .buttons a:hover, .buttons button:hover { background: var(--surface-3); color: var(--ink); }
+  .reply { margin: 6px 0 0 32px; }
+  .lnk { color: var(--brand); font-weight: 600; }
+  .gate { font-size: 14px; background: var(--brand-tint); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--ink-2); }
+  .notice { font-size: 13.5px; background: var(--cream); border: 1px solid var(--cream-line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; color: var(--ink-2); }
+  .held { background: var(--cream); color: var(--ink-3); border-radius: 99px; padding: 1px 8px; font-size: 11.5px; }
+  .rules { font-size: 12px; }
+  .rep { font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 32px; color: var(--ink-3); align-items: center; }
+  .rep button { font: inherit; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 3px 10px; cursor: pointer; color: var(--ink-2); }
   .rep button:hover { border-color: var(--heart); color: var(--heart); }
-  @media (max-width: 899px) { .cm { padding: 0 14px; } .child { margin-left: 6px; padding-left: 8px; } }
+  @media (max-width: 899px) { .cm { padding: 0 14px; } .child { margin-left: 4px; padding-left: 12px; } }
 </style>

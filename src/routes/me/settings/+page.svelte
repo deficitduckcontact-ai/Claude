@@ -25,11 +25,11 @@
       <h3>Reading</h3>
       <div class="field"><label for="t">Theme</label>
         <select id="t" class="input" value={theme.choice} onchange={(e) => theme.set(e.currentTarget.value as Theme)}>
-          <option value="system">Match my device</option><option value="light">Day</option><option value="dark">Night</option>
+          <option value="system">Match my device</option><option value="light">Light</option><option value="dark">Dark</option>
         </select></div>
       <div class="field"><label for="d">Default feed layout (desktop)</label>
         <select id="d" class="input" bind:value={session.density} onchange={() => session.save()}>
-          <option value="classic">Classic — old-reddit rows</option><option value="compact">Compact — thumbnails</option><option value="card">Card — big panels</option>
+          <option value="card">Card — big panels</option><option value="compact">Compact — thumbnails</option><option value="classic">Classic — dense list</option>
         </select></div>
       <div class="field"><label for="s">Default sort</label>
         <select id="s" class="input" bind:value={session.sort} onchange={() => session.save()}>

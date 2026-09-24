@@ -10,17 +10,25 @@
 | Images | Cloud Storage + `sharp` in Functions | Content-hashed, immutable, cache forever. |
 | Money | Stripe Billing + Checkout + Customer Portal + Connect Express | One subscription per reader; per-invoice transfers to creators. |
 
-The UI lineage is the "changing subscriptions" mockup (`changing-subscriptions.web.app`): tile picker, dot meter, sticky money footer, and cream/amber/mint accents. Brand colour is Facebook-style blue `#1877F2` on Facebook's `#F0F2F5` grey.
+The UI lineage is the "changing subscriptions" mockup (`changing-subscriptions.web.app`), set in a new-reddit / current-Tinyview layout with a Facebook-style blue (`#1877F2`) on Facebook's `#F0F2F5` grey.
+- **From the mockup:** soft 12–16px cards, cream → mint "what you pay → what artists get" pills, uppercase micro-labels, serif-italic subtitles, the tile picker and its sticky money footer, green ✓ reassurances.
+- **From new reddit / Tinyview:** a white top bar with centred search, left nav (feeds + your series), post cards with pill action buttons, a right sidebar of cards, and community-style series pages (banner, big avatar, stats, tabs).
+- **Layouts:** Card (default), Compact and Classic, plus keyboard shortcuts (`j k x o l s h f n p ?`).
+- **Dark mode:** follows the device by default; toggle it from the avatar menu.
 
-The desktop layout borrows from **old reddit**, not Tinyview:
-- a "MY SERIES" strip across the top
-- a light-blue header with tabs on its bottom edge
-- a fluid list with a right sidebar and no left nav
-- dense Verdana rows: rank, likes, 70px thumbnail, blue titles that turn purple once read, "submitted … by … to s/series"
-- an expando button, and comments · share · save · hide · follow links
-- threaded `[–]` comments, and "view more: next ›" paging
+## Not tied to GitHub
 
-Series pages work like subreddits.
+GitHub only stores the source code. At runtime the app is:
+- static files (the `build/` folder) on any static host (Firebase Hosting today; Cloudflare Pages or Netlify work unchanged)
+- Firebase for accounts, data, files and functions
+- Stripe for money
+
+`.devcontainer/` is an optional Codespaces convenience. Delete it and nothing changes.
+
+## Installable app (PWA)
+
+`static/manifest.webmanifest`, PNG icons in `static/icons/`, and `src/service-worker.ts` (network-first pages, cache-first hashed assets, cache-first immutable free panels capped at 300; Firebase, Stripe and signed premium URLs are never cached). Readers install it with **Add to Home Screen** (iPhone) or **Install app** (Android and desktop Chrome/Edge). It opens full-screen with its own icon, and store fees don't apply.
+TODO: a native App Store build (e.g. Capacitor) only if you accept Apple/Google taking 15–30% of in-app subscriptions, or link out to the website for payment where the rules allow.
 
 ## Money flow
 

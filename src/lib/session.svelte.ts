@@ -52,8 +52,8 @@ class Session {
     setInterval(() => (this.now = Date.now()), 60_000);
     try {
       const p: Partial<Persisted> = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-      // Desktop defaults to the old-reddit "classic" list; phones to big cards.
-      this.density = p.density ?? (matchMedia('(min-width: 900px)').matches ? 'classic' : 'card');
+      // Big cards by default (new reddit / Tinyview); Compact and Classic are opt-in lists.
+      this.density = p.density ?? 'card';
       this.sort = p.sort ?? 'hot';
       if (!LIVE) {
         this.account = p.account ?? null;

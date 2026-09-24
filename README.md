@@ -5,7 +5,8 @@ Comics where your subscription goes to **the artists you pick**. Working name (m
 - Read free. Subscribe at **$2.49 per artist / month**, billed as **one** Stripe charge.
 - Any subscription unlocks every premium comic; picks decide where the money goes.
 - Creators keep **85%**. TinyCoup keeps 15% and pays card fees out of it.
-- Desktop is an old-reddit-style three-column feed (Card / Compact / Classic, `j` `k` `x` `o` keys). Mobile is app-like with a bottom nav, installable as a PWA.
+- The design is new-reddit / Tinyview-style (left nav, card feed, right sidebar), with the look of the "changing subscriptions" mockup and a Facebook-blue brand, plus dark mode.
+- It's an **installable app** (PWA): Add to Home Screen on iPhone, or Install on Android/desktop. Nothing depends on GitHub at runtime.
 
 ## Run it
 

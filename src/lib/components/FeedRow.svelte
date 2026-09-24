@@ -1,10 +1,12 @@
 <script lang="ts">
+  // One post in the feed. Card (default) looks like new reddit / Tinyview;
+  // Compact and Classic are denser list views for fast scanning.
   import Cover from './Cover.svelte';
   import Panel from './Panel.svelte';
   import PanelStack from './PanelStack.svelte';
   import { session } from '$lib/session.svelte';
   import { creatorLine, epKey, getSeries } from '$lib/data';
-  import { ago, agoText, compact } from '$lib/time';
+  import { ago, compact } from '$lib/time';
   import type { Density, Episode } from '$lib/types';
 
   let { ep, density, rank, selected = false, expanded = false, showSeries = true, ontoggle, onselect }: {
@@ -34,140 +36,115 @@
   function toggle() { ontoggle(); if (!expanded) session.markRead(key); }
 </script>
 
+{#snippet actions(small: boolean)}
+  <div class="acts" class:small>
+    <button class="a heart" class:on={liked} onclick={like} aria-pressed={liked} aria-label="Like">
+      <svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2A4.8 4.8 0 0112 7.2a4.8 4.8 0 019.3 4.1c-1.8 4.6-9.3 9.2-9.3 9.2z" /></svg>{compact(likes)}
+    </button>
+    <a class="a" href="{href}#comments"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" /></svg>{ep.comments}</a>
+    {#if density !== 'card' || expanded}
+      <button class="a" onclick={toggle} aria-expanded={expanded}>
+        <svg viewBox="0 0 24 24"><path d={expanded ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} /></svg>{expanded ? 'Collapse' : `${ep.panels.length} panels`}
+      </button>
+    {/if}
+    <a class="a" href="/share?u={encodeURIComponent(href)}"><svg viewBox="0 0 24 24"><path d="M14 5l6 6-6 6M20 11H9a5 5 0 00-5 5v2" /></svg>Share</a>
+    <button class="a" class:on={saved} onclick={save}><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" /></svg><span class="desk-only">{saved ? 'Saved' : 'Save'}</span></button>
+    <button class="a desk-only" onclick={hide} title="Hide from your feed" aria-label="Hide"><svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0122 12a13 13 0 01-2.7 3.4M6.6 6.6A13 13 0 002 12s3.6 7 10 7a9.7 9.7 0 004.4-1" /></svg></button>
+  </div>
+{/snippet}
+
 {#if s}
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <article class="post {density}" class:sel={selected} class:read data-key={key} onclick={onselect}>
-  {#if density === 'classic'}
-    <span class="rank">{rank}</span>
-    <div class="vote">
-      <button class="heart" class:on={liked} onclick={like} aria-pressed={liked} aria-label="Like">♥</button>
-      <span class:on={liked}>{compact(likes)}</span>
-    </div>
-    <a {href} class="thumb" tabindex="-1" aria-hidden="true"><Cover series={s} size={70} radius={3} /></a>
-    <div class="entry">
-      <p class="title">
-        <a {href} class="t">{ep.title}</a>
-        <span class="domain">({s.title} #{ep.number})</span>
-        {#if ep.premium}<span class="flair">★ premium</span>{/if}
-      </p>
-      <p class="tagline">
-        <button class="expando" class:open={expanded} onclick={toggle} aria-expanded={expanded} aria-label={expanded ? 'Collapse' : 'Expand'} title="{ep.panels.length} panels">{expanded ? '✕' : '▸'}</button>
-        submitted <time>{agoText(ep.publishedAt, session.now)}</time> by <a href="/s/{s.slug}" class="au">{creatorLine(s)}</a>
-        {#if showSeries}to <a href="/s/{s.slug}" class="sr">s/{s.slug}</a>{/if}
-      </p>
-      <ul class="buttons">
-        <li><a href="{href}#comments" class="cm">{ep.comments} comment{ep.comments === 1 ? '' : 's'}</a></li>
-        <li><a href="/share?u={encodeURIComponent(href)}">share</a></li>
-        <li><button onclick={save}>{saved ? 'unsave' : 'save'}</button></li>
-        <li><button onclick={hide}>hide</button></li>
-        <li><button onclick={follow}>{following ? 'unfollow' : 'follow'}</button></li>
-      </ul>
-    </div>
-  {:else}
+  {#if density === 'card'}
     <header class="head">
-      {#if density === 'compact'}
-        <a {href} class="thumb" aria-hidden="true" tabindex="-1"><Cover series={s} size={72} radius={6} /></a>
-      {:else}
-        <Cover series={s} size={40} radius={99} />
-      {/if}
-      <div class="body">
-        {#if density === 'card'}
-          <div class="meta"><a href="/s/{s.slug}"><b>{s.title}</b></a> · {creatorLine(s)} · {when}</div>
-        {/if}
-        <div class="title">
-          <a {href} class="t">{ep.title}</a>
-          {#if ep.premium}<span class="chip premium">★ Premium</span>{/if}
-        </div>
-        {#if density === 'compact'}
-          <div class="meta"><a href="/s/{s.slug}">s/{s.slug}</a> · {creatorLine(s)} · #{ep.number} · {when}</div>
-        {/if}
+      <a href="/s/{s.slug}" class="who"><Cover series={s} size={36} radius={99} /></a>
+      <div class="meta">
+        <a href="/s/{s.slug}" class="sname">{s.title}</a>
+        <span class="faint">· {when}</span>
+        <div class="by">{creatorLine(s)}</div>
       </div>
-      <button class="btn small follow" class:soft={!following} onclick={follow}>{following ? 'Following' : '+ Follow'}</button>
+      <button class="btn small follow" class:primary={!following} onclick={follow}>{following ? 'Following' : 'Follow'}</button>
     </header>
-
-    {#if density === 'card' && !expanded}
+    <h2 class="title"><a {href}>{ep.title}</a>{#if ep.premium}<span class="chip premium">★ Premium</span>{/if}</h2>
+    {#if ep.caption}<p class="cap">{ep.caption}</p>{/if}
+    {#if !expanded}
       <button class="preview" onclick={toggle} aria-label="Read {ep.title}">
         <Panel panel={ep.panels[0]} hue={s.hue} eager={rank <= 2} />
-        {#if ep.panels.length > 1}<span class="more">1 / {ep.panels.length} · tap to read</span>{/if}
+        {#if ep.panels.length > 1}<span class="more">1 / {ep.panels.length} · Tap to read</span>{/if}
       </button>
     {/if}
-
-    <footer class="acts">
-      <button class="heart" class:on={liked} onclick={like} aria-pressed={liked}>♥ {compact(likes)}</button>
-      <a href="{href}#comments">💬 {ep.comments}</a>
-      <button onclick={toggle} aria-expanded={expanded}>{expanded ? '▴ Collapse' : `▾ ${density === 'card' ? 'Read all' : 'Expand'} · ${ep.panels.length}`}</button>
-      <span class="grow"></span>
-      <button onclick={save} class="desk-only">{saved ? 'Saved' : 'Save'}</button>
-      <button onclick={hide} class="desk-only">Hide</button>
-      <a href="/share?u={encodeURIComponent(href)}">Share</a>
-    </footer>
+  {:else}
+    <div class="row-in">
+      {#if density === 'classic'}<span class="rank">{rank}</span>{/if}
+      <a {href} class="thumb" tabindex="-1" aria-hidden="true"><Cover series={s} size={density === 'classic' ? 56 : 88} radius={10} /></a>
+      <div class="body">
+        <div class="meta sm">
+          {#if showSeries}<a href="/s/{s.slug}" class="sname">{s.title}</a><span class="faint">·</span>{/if}
+          <span class="faint">{creatorLine(s)} · #{ep.number} · {when}</span>
+        </div>
+        <h2 class="title"><a {href}>{ep.title}</a>{#if ep.premium}<span class="chip premium">★</span>{/if}</h2>
+        {@render actions(true)}
+      </div>
+    </div>
   {/if}
 
   {#if expanded}
     <div class="inline"><PanelStack panels={ep.panels} hue={s.hue} premium={ep.premium} /></div>
   {/if}
+  {#if density === 'card'}{@render actions(false)}{/if}
 </article>
 {/if}
 
 <style>
-  .post { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; padding: 10px 12px; position: relative; box-shadow: var(--shadow-sm); }
-  .post.sel { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-ring); }
-  .title { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0; line-height: 1.3; }
-  .t { color: var(--ink); font-weight: 600; font-size: 16px; }
-  .post.read .t { color: var(--link-read); }
-  .meta { font-size: 12.5px; color: var(--ink-4); margin-top: 2px; }
-  .meta a { color: var(--ink-3); }
-  .head { display: flex; gap: 12px; align-items: center; }
-  .body { flex: 1; min-width: 0; }
+  .post { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 14px; padding: 14px 16px 12px; box-shadow: var(--shadow-sm); transition: border-color 0.15s; }
+  .post:hover { border-color: var(--line-strong); }
+  .post.sel { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
+  .head { display: flex; gap: 10px; align-items: center; }
+  .who { display: flex; }
+  .meta { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.3; }
+  .meta.sm { font-size: 12.5px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .sname { font-weight: 700; color: var(--ink); }
+  .by { font-size: 12.5px; color: var(--ink-3); }
   .follow { flex: 0 0 auto; }
-  .acts { display: flex; align-items: center; gap: 2px; margin-top: 8px; font-size: 13px; color: var(--ink-3); font-weight: 600; }
-  .acts > * { background: none; border: 0; padding: 6px 9px; border-radius: 6px; cursor: pointer; color: inherit; text-decoration: none; font-weight: 600; }
-  .acts > *:hover { background: var(--page); text-decoration: none; }
-  .heart.on { color: var(--heart); }
-  .inline { margin-top: 10px; max-width: 720px; }
-  .preview { display: block; width: 100%; padding: 0; border: 0; margin-top: 10px; cursor: pointer; position: relative; border-radius: 6px; overflow: hidden; background: none; }
-  .more { position: absolute; right: 10px; bottom: 10px; background: rgba(0, 0, 0, 0.7); color: #fff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
-  .post.card { max-width: 720px; }
+  .title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; font-size: 19px; line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; }
+  .title a { color: var(--ink); }
+  .post.read .title a { color: var(--ink-3); }
+  .cap { margin: 0 0 10px; font-family: var(--serif); font-style: italic; font-size: 14.5px; color: var(--ink-3); }
+  .preview { display: block; width: 100%; padding: 0; border: 0; cursor: pointer; position: relative; border-radius: 12px; overflow: hidden; background: none; }
+  .more { position: absolute; right: 12px; bottom: 12px; background: rgba(0, 0, 0, 0.72); color: #fff; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 99px; }
+  .inline { margin-top: 10px; }
+  .inline :global(.panel) { border-radius: 10px; }
 
-  /* ---------- classic: old reddit ---------- */
-  .post.classic {
-    display: grid; grid-template-columns: 28px 36px 70px minmax(0, 1fr); column-gap: 8px; align-items: start;
-    font-family: var(--classic); border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 7px 10px 6px 4px; background: transparent;
-  }
-  .post.classic.sel { background: var(--row-sel); box-shadow: inset 3px 0 0 var(--brand); }
-  .post.classic + :global(.post.classic) { border-top: 1px solid var(--hairline); }
-  .rank { text-align: right; color: var(--idle); font-size: 15px; padding-top: 20px; font-family: arial, sans-serif; }
-  .vote { display: flex; flex-direction: column; align-items: center; font-size: 12px; font-weight: 700; color: var(--idle); padding-top: 6px; }
-  .vote span { color: var(--ink-4); } .vote span.on { color: var(--heart); }
-  .vote .heart { border: 0; background: none; font-size: 17px; cursor: pointer; color: var(--idle); padding: 0; line-height: 1.1; }
-  .vote .heart:hover { color: var(--heart); }
-  .vote .heart.on { color: var(--heart); }
-  .thumb { display: block; }
-  .entry { min-width: 0; }
-  .classic .title { gap: 5px; }
-  .classic .t { font-family: var(--classic); font-weight: 400; font-size: 16px; color: var(--link); }
-  .classic.read .t { color: var(--link-read); }
-  .classic .t:visited { color: var(--link-read); }
-  .domain { font-size: 10px; color: var(--meta); }
-  .flair { font-size: 10px; background: var(--flair); border: 1px solid var(--flair-line); color: var(--flair-ink); border-radius: 2px; padding: 0 4px; }
-  .tagline { margin: 2px 0 0; font-size: 10px; color: var(--meta); display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
-  .tagline a { color: var(--link); }
-  .tagline .au { color: var(--author); }
-  .expando { width: 22px; height: 18px; border: 1px solid var(--pill-line); background: var(--pill); color: var(--pill-ink); border-radius: 2px; font-size: 10px; line-height: 1; cursor: pointer; margin-right: 4px; padding: 0; }
-  .expando:hover { border-color: var(--brand); color: var(--brand); }
-  .expando.open { background: var(--surface); }
-  .buttons { list-style: none; margin: 2px 0 0; padding: 0; display: flex; gap: 8px; font-size: 10px; flex-wrap: wrap; }
-  .buttons a, .buttons button { color: var(--meta); font-weight: 700; background: none; border: 0; padding: 1px 0; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
-  .buttons a:hover, .buttons button:hover { text-decoration: underline; color: var(--meta-strong); }
-  .post.classic .inline { grid-column: 3 / -1; margin: 8px 0 4px; }
+  .acts { display: flex; align-items: center; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .a { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--surface-3); border: 0; cursor: pointer; color: var(--ink-2); font-size: 13px; font-weight: 600; text-decoration: none !important; transition: background 0.12s, color 0.12s; }
+  .a:hover { background: var(--line); }
+  .a svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .heart.on { color: var(--heart); background: var(--heart-bg); }
+  .heart.on svg { fill: currentColor; }
+  .a.on:not(.heart) { color: var(--brand); background: var(--brand-tint); }
+  .a.on:not(.heart) svg { fill: currentColor; }
+  .acts.small { margin-top: 6px; gap: 2px; }
+  .acts.small .a { height: 28px; padding: 0 9px; font-size: 12px; background: transparent; }
+  .acts.small .a:hover { background: var(--surface-3); }
+
+  /* compact + classic: list rows */
+  .post.compact, .post.classic { padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; }
+  .row-in { display: flex; gap: 14px; align-items: flex-start; }
+  .rank { width: 22px; text-align: right; color: var(--ink-4); font-weight: 600; font-size: 14px; padding-top: 18px; flex: 0 0 auto; }
+  .thumb { flex: 0 0 auto; display: flex; }
+  .body { flex: 1; min-width: 0; }
+  .compact .title, .classic .title { margin: 2px 0 0; font-size: 16px; }
+  .post.classic { margin-bottom: 0; border-radius: 0; box-shadow: none; border-width: 0 0 1px; padding: 8px 12px; }
+  .post.classic:hover { background: var(--surface-2); border-color: var(--line); }
+  .post.classic.sel { box-shadow: inset 3px 0 0 var(--brand); background: var(--row-sel); }
+  .post.classic .title { font-size: 15px; font-weight: 600; }
 
   @media (max-width: 899px) {
-    .post { border-radius: 0; border-left: 0; border-right: 0; margin-bottom: 6px; padding: 12px 14px; box-shadow: none; }
-    .post.card .preview { margin-left: -14px; margin-right: -14px; width: calc(100% + 28px); border-radius: 0; }
-    .post.card .inline { margin-left: -14px; margin-right: -14px; }
-    .post.classic { grid-template-columns: 0 34px 56px minmax(0, 1fr); padding: 8px 10px 8px 0; background: var(--surface); margin: 0; }
-    .rank { visibility: hidden; }
-    .post.classic :global(.cover) { width: 56px !important; height: 56px !important; }
-    .post.classic .inline { grid-column: 1 / -1; margin-left: -0px; }
+    .post { border-radius: 0; border-left: 0; border-right: 0; margin-bottom: 8px; box-shadow: none; }
+    .post.card .preview { margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); border-radius: 0; }
+    .post.card .inline { margin-left: -16px; margin-right: -16px; }
+    .post.card .inline :global(.panel) { border-radius: 0; }
+    .title { font-size: 17px; }
   }
 </style>
